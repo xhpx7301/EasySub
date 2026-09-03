@@ -52,6 +52,7 @@ def _sub_dict(s: Subscription) -> dict:
         "sort": s.sort,
         "family_members": s.family_members,
         "remind_days_before": s.remind_days_before,
+        "reminder_rules": s.reminder_rules,
     }
 
 
@@ -234,6 +235,7 @@ def _restore_entities(db: Session, user: User, data: dict, replace: bool) -> int
             sort=s.get("sort", 0) or 0,
             family_members=s.get("family_members"),
             remind_days_before=s.get("remind_days_before", "7,6,5,4,3,2,1") or "7,6,5,4,3,2,1",
+            reminder_rules=s.get("reminder_rules") if isinstance(s.get("reminder_rules"), list) else None,
         )
         if billing_type == "recurring" and not sub.next_renewal_date:
             sub.next_renewal_date = compute_next_renewal(start, sub.cycle, sub.cycle_count)

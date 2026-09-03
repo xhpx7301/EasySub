@@ -145,8 +145,8 @@ def telegram_test(
 
 @router.post("/run-scan")
 def run_scan(user: User = Depends(get_current_user)):
-    """手动触发一次到期扫描（用于测试）。"""
-    return scheduler.run_reminder_scan()
+    """手动触发一次完整到期处理（自动续费、到期提醒及日期提醒）。"""
+    return scheduler.run_due_tasks()
 
 
 @router.get("/logs")
@@ -162,6 +162,7 @@ def logs(limit: int = 50, user: User = Depends(get_current_user), db: Session = 
             "id": r.id,
             "subscription_id": r.subscription_id,
             "days_before": r.days_before,
+            "rule_label": r.rule_label,
             "status": r.status,
             "message": r.message,
             "sent_at": r.sent_at,

@@ -131,6 +131,7 @@ class SubscriptionIn(BaseModel):
     show_in_calendar: bool = True
     family_members: list[str] | None = None
     remind_days_before: str = "7,6,5,4,3,2,1"
+    reminder_rules: list[dict] | None = None
     trial_end: date | None = None
     cancel_by: date | None = None
     card_last4: str | None = None
@@ -162,6 +163,7 @@ class SubscriptionUpdate(BaseModel):
     show_in_calendar: bool | None = None
     family_members: list[str] | None = None
     remind_days_before: str | None = None
+    reminder_rules: list[dict] | None = None
     trial_end: date | None = None
     cancel_by: date | None = None
     card_last4: str | None = None
@@ -197,6 +199,7 @@ class SubscriptionOut(BaseModel):
     sort: int = 0
     family_members: list[str] | None
     remind_days_before: str
+    reminder_rules: list[dict] | None = None
     trial_end: date | None = None
     cancel_by: date | None = None
     card_last4: str | None = None

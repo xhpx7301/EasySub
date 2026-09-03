@@ -163,8 +163,10 @@ class Subscription(Base):
     # 家庭共享成员（JSON 数组，如 ["爸爸","妈妈"]）
     family_members: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
-    # 提醒：提前 N 天（逗号分隔）。默认倒数 7 天起每天提醒，用户可自定义。
+    # 旧版提醒：提前 N 天（逗号分隔），用于兼容已有订阅。
     remind_days_before: Mapped[str] = mapped_column(String(64), default="7,6,5,4,3,2,1")
+    # 新版提醒规则：[{id, enabled, timing: before|due|after, value, unit: day|hour}]
+    reminder_rules: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -213,6 +215,9 @@ class NotificationLog(Base):
     subscription_id: Mapped[int] = mapped_column(ForeignKey("subscriptions.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     days_before: Mapped[int] = mapped_column(Integer)
+    # 用规则 id、账期和重复序号组成，避免小时/逾期重复提醒在同一轮次重复发送。
+    event_key: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    rule_label: Mapped[str | None] = mapped_column(String(64), nullable=True)
     channel: Mapped[str] = mapped_column(String(16), default="telegram")
     status: Mapped[str] = mapped_column(String(16))         # sent | failed
     message: Mapped[str | None] = mapped_column(Text, nullable=True)

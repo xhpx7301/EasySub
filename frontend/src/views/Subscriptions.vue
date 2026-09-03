@@ -248,21 +248,53 @@
               <input v-model="form.start_date" type="date" />
             </div>
             <div style="flex:1" v-if="form.billing_type === 'recurring'">
-              <label>{{ t('sub.nextRenewal') }} <span class="auto-tip">· 自动</span></label>
+              <div class="field-title">
+                <label>{{ t('sub.nextRenewal') }}</label>
+                <button class="icon-btn" type="button" :title="t('sub.calcNextTip')" @click="recomputeNext">
+                  <span v-html="icon('calendar')"></span>
+                </button>
+              </div>
               <input v-model="form.next_renewal_date" type="date" />
             </div>
           </div>
           <div class="row" v-if="form.billing_type === 'recurring'">
-            <div style="flex:1">
-              <label>{{ t('sub.remindDays') }}</label>
-              <input v-model="form.remind_days_before" placeholder="7,6,5,4,3,2,1" />
+            <div class="reminder-rules">
+              <div class="rules-head">
+                <div>
+                  <div class="field-title"><label>{{ t('sub.reminderRules') }}</label></div>
+                  <div class="muted rules-hint">{{ t('sub.reminderRulesHint') }}</div>
+                </div>
+                <div class="rules-actions">
+                  <button class="btn ghost sm" type="button" @click="applyReminderPreset">{{ t('sub.applyPreset') }}</button>
+                  <button class="icon-btn" type="button" :title="t('sub.addRule')" @click="addReminderRule">
+                    <span v-html="icon('plus')"></span>
+                  </button>
+                </div>
+              </div>
+              <div v-for="(rule, index) in form.reminder_rules" :key="rule.id" class="rule-row">
+                <label class="rule-enabled"><input v-model="rule.enabled" type="checkbox" /> {{ t('sub.enabled') }}</label>
+                <select v-model="rule.timing" @change="normalizeRule(rule)">
+                  <option value="before">{{ t('sub.beforeDue') }}</option>
+                  <option value="due">{{ t('sub.onDue') }}</option>
+                  <option value="after" :disabled="form.auto_renew">{{ t('sub.afterDue') }}</option>
+                </select>
+                <input v-model.number="rule.value" type="number" min="1" :disabled="rule.timing === 'due'" @change="normalizeRule(rule)" />
+                <select v-model="rule.unit" :disabled="rule.timing === 'due'" @change="normalizeRule(rule)">
+                  <option value="day">{{ t('sub.days') }}</option>
+                  <option value="hour">{{ t('sub.hours') }}</option>
+                </select>
+                <button class="icon-btn danger-icon" type="button" :title="t('sub.removeRule')" @click="removeReminderRule(index)">
+                  <span v-html="icon('trash')"></span>
+                </button>
+              </div>
+              <div v-if="form.auto_renew && form.reminder_rules.some((rule) => rule.timing === 'after')" class="muted rules-hint">{{ t('sub.afterAutoHint') }}</div>
             </div>
             <div style="flex:1">
               <label>{{ t('sub.active') }}</label>
               <select v-model="form.is_active"><option :value="true">✓</option><option :value="false">✗</option></select>
             </div>
             <div style="flex:1">
-              <label>{{ t('sub.autoRenew') }}</label>
+              <label>{{ t('sub.autoRenew') }} <span class="auto-tip" :title="t('sub.autoRenewTip')">?</span></label>
               <select v-model="form.auto_renew"><option :value="true">✓</option><option :value="false">✗</option></select>
             </div>
           </div>
@@ -380,6 +412,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '../api'
 import { useAuth } from '../stores/auth'
+import { icon } from '../icons'
 
 const { t } = useI18n()
 const auth = useAuth()
@@ -476,6 +509,61 @@ function toISO(d) {
   const x = new Date(d)
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
 }
+function ruleId() {
+  return globalThis.crypto?.randomUUID?.() || `rule-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+function newReminderRule(timing = 'before', value = 1, unit = 'day') {
+  return { id: ruleId(), enabled: true, timing, value, unit }
+}
+function defaultReminderRules() {
+  return [
+    newReminderRule('before', 7),
+    newReminderRule('before', 3),
+    newReminderRule('before', 1),
+    newReminderRule('due', 0, 'day')
+  ]
+}
+function normalizeRule(rule) {
+  if (rule.timing === 'due') {
+    rule.value = 0
+    rule.unit = 'day'
+    return
+  }
+  rule.value = Math.max(1, Number(rule.value) || 1)
+  if (!['day', 'hour'].includes(rule.unit)) rule.unit = 'day'
+}
+function normalizeReminderRules(rules, legacy) {
+  if (Array.isArray(rules)) {
+    return rules.map((item) => {
+      const rule = {
+        id: item?.id || ruleId(),
+        enabled: item?.enabled !== false,
+        timing: ['before', 'due', 'after'].includes(item?.timing) ? item.timing : 'before',
+        value: item?.value,
+        unit: item?.unit || 'day'
+      }
+      normalizeRule(rule)
+      return rule
+    })
+  }
+  const days = String(legacy || '').split(',')
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isInteger(value) && value >= 0)
+  return days.map((value) => value === 0
+    ? newReminderRule('due', 0, 'day')
+    : newReminderRule('before', value, 'day'))
+}
+function addReminderRule() { form.value.reminder_rules.push(newReminderRule()) }
+function removeReminderRule(index) { form.value.reminder_rules.splice(index, 1) }
+function applyReminderPreset() { form.value.reminder_rules = defaultReminderRules() }
+function legacyReminderDays(rules) {
+  return rules
+    .filter((rule) => rule.enabled && rule.unit === 'day' && ['before', 'due'].includes(rule.timing))
+    .map((rule) => rule.timing === 'due' ? 0 : rule.value)
+    .filter((value, index, all) => all.indexOf(value) === index)
+    .sort((a, b) => b - a)
+    .join(',')
+}
 
 function blank() {
   return {
@@ -483,7 +571,7 @@ function blank() {
     category_id: null, payment_method_id: null, bundle_id: null, billing_type: 'recurring',
     cycle: 'month', cycle_count: 1, start_date: new Date().toISOString().slice(0, 10),
     next_renewal_date: '', end_date: null, url: '', notes: '', remark: '', ipv4: '', ipv6: '',
-    remind_days_before: '7,6,5,4,3,2,1', auto_renew: true, is_active: true,
+    remind_days_before: '7,3,1,0', reminder_rules: defaultReminderRules(), auto_renew: true, is_active: true,
     show_in_calendar: true, family_members: [],
     trial_end: null, cancel_by: null, card_last4: '', card_expiry: ''
   }
@@ -617,7 +705,12 @@ function openNew() {
 }
 function openEdit(s) {
   suppressAuto = true
-  form.value = { ...s, next_renewal_date: s.next_renewal_date || '', family_members: s.family_members || [] }
+  form.value = {
+    ...s,
+    next_renewal_date: s.next_renewal_date || '',
+    family_members: s.family_members || [],
+    reminder_rules: normalizeReminderRules(s.reminder_rules, s.remind_days_before)
+  }
   formErr.value = ''; suggestions.value = []
   bundleMode.value = s.bundle_id ? 'join' : 'none'
   newBundleName.value = ''
@@ -727,6 +820,12 @@ async function save() {
       form.value.bundle_id = null
     }
     const payload = { ...form.value }
+    payload.reminder_rules = payload.reminder_rules.map((rule) => {
+      const normalized = { ...rule }
+      normalizeRule(normalized)
+      return normalized
+    })
+    payload.remind_days_before = legacyReminderDays(payload.reminder_rules)
     if (!payload.next_renewal_date) delete payload.next_renewal_date
     // 空日期串转 null，避免后端日期解析报错
     for (const k of ['trial_end', 'cancel_by']) if (!payload[k]) payload[k] = null
@@ -815,6 +914,12 @@ h1 { margin-top: 0; }
 .err { color: var(--danger); font-size: 13px; }
 .ico { width: 18px; height: 18px; vertical-align: middle; border-radius: 4px; }
 .auto-tip { color: var(--primary); font-size: 11px; }
+.field-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.field-title label { margin: 0; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+  padding: 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-soft); cursor: pointer; }
+.icon-btn:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+.danger-icon:hover { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
 
 /* 分类分组 */
 .cat-group { margin-bottom: 22px; border-radius: 14px; transition: outline .12s; outline: 2px dashed transparent; }
@@ -881,6 +986,14 @@ h1 { margin-top: 0; }
 /* 表单内复用样式 */
 .block { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
 .block-t { font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 6px; }
+.reminder-rules { flex: 1 1 100%; min-width: 0; }
+.rules-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.rules-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.rules-hint { margin-top: 3px; font-size: 12px; line-height: 1.45; }
+.rule-row { display: grid; grid-template-columns: 82px minmax(96px, 1fr) 76px 74px 32px; gap: 6px; align-items: center; margin-top: 6px; }
+.rule-row input, .rule-row select { min-width: 0; }
+.rule-enabled { display: inline-flex; align-items: center; gap: 5px; width: auto; margin: 0; color: var(--text); font-size: 12px; white-space: nowrap; }
+.rule-enabled input { width: auto; margin: 0; }
 .icon-pick { display: flex; align-items: flex-end; }
 .ico-lg { width: 40px; height: 40px; border-radius: 8px; object-fit: contain; border: 1px solid var(--border); }
 .ico-lg.emoji { display: flex; align-items: center; justify-content: center; font-size: 24px; }
@@ -912,5 +1025,10 @@ h1 { margin-top: 0; }
 @media (max-width: 720px) {
   .sub-grid { grid-template-columns: 1fr; }
   .sc-name { font-size: 16px; }
+  .reminder-rules { min-width: 100%; }
+  .rule-row { grid-template-columns: 1fr 1fr 32px; }
+  .rule-enabled { grid-column: 1 / -1; }
+  .rule-row > :nth-child(4) { grid-column: 1 / 3; }
+  .rule-row > .icon-btn { grid-column: 3; grid-row: 3; }
 }
 </style>

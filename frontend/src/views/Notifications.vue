@@ -14,7 +14,7 @@
           <span class="muted">{{ fmt(l.sent_at) }}</span>
         </div>
         <div class="lc-body">{{ l.message }}</div>
-        <div class="muted sm">{{ t('notify.daysBefore') }}: {{ l.days_before }}</div>
+        <div class="muted sm">{{ l.rule_label || `${t('notify.daysBefore')}: ${l.days_before}` }}</div>
       </div>
       <p v-if="!logs.length" class="muted">{{ t('notify.empty') }}</p>
     </div>

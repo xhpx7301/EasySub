@@ -1,11 +1,13 @@
-"""定时任务：每日扫描即将到期的订阅并通过 Telegram 提醒。"""
-from datetime import date, datetime
+"""订阅到期、提醒、自动续费及维护任务。"""
+from datetime import date, datetime, time, timedelta
+from types import SimpleNamespace
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 
 from app import activity, database
+from app.billing import add_cycle
 from app.config import settings
 from app.models import Category, NotificationLog, PaymentMethod, Subscription, User
 from app.services import exchange, notify
@@ -22,20 +24,174 @@ def _parse_days(raw: str) -> list[int]:
     return out
 
 
+def _scan_time() -> time:
+    try:
+        hour, minute = (int(x) for x in settings.reminder_scan_time.split(":"))
+        return time(hour=hour, minute=minute)
+    except (TypeError, ValueError):
+        return time(hour=9, minute=0)
+
+
+def _reminder_rules(sub: Subscription) -> list[dict]:
+    """规范化新版规则；旧版逗号字段继续按“到期前 N 天”解释。"""
+    raw = sub.reminder_rules
+    if isinstance(raw, list):
+        rules = []
+        for index, item in enumerate(raw):
+            if not isinstance(item, dict):
+                continue
+            timing = item.get("timing")
+            unit = item.get("unit")
+            if timing not in {"before", "due", "after"} or unit not in {"day", "hour"}:
+                continue
+            try:
+                value = max(1, int(item.get("value", 1)))
+            except (TypeError, ValueError):
+                value = 1
+            if timing == "due":
+                value, unit = 0, "day"
+            rule_id = str(item.get("id") or f"rule-{index}")[:48]
+            rules.append({
+                "id": rule_id,
+                "enabled": bool(item.get("enabled", True)),
+                "timing": timing,
+                "value": value,
+                "unit": unit,
+            })
+        return rules
+
+    rules = []
+    for days in _parse_days(sub.remind_days_before):
+        rules.append({
+            "id": f"legacy-{days}",
+            "enabled": True,
+            "timing": "due" if days == 0 else "before",
+            "value": 0 if days == 0 else days,
+            "unit": "day",
+        })
+    return rules
+
+
+def _rule_label(rule: dict) -> str:
+    if rule["timing"] == "due":
+        return "到期当天"
+    unit = "天" if rule["unit"] == "day" else "小时"
+    if rule["timing"] == "before":
+        return f"到期前 {rule['value']} {unit}"
+    return f"到期后每 {rule['value']} {unit}"
+
+
 def _already_sent(db, sub_id: int, days_before: int, on_day: date) -> bool:
+    """兼容新版启用前已写入的旧提醒日志。"""
     rows = db.scalars(
         select(NotificationLog).where(
             NotificationLog.subscription_id == sub_id,
             NotificationLog.days_before == days_before,
+            NotificationLog.event_key.is_(None),
             NotificationLog.status == "sent",
         )
     ).all()
     return any(r.sent_at and r.sent_at.date() == on_day for r in rows)
 
 
-def run_reminder_scan() -> dict:
-    """核心扫描逻辑（可被定时器或手动触发调用）。"""
-    today = date.today()
+def _event_sent(db, sub_id: int, event_key: str) -> bool:
+    return db.scalar(
+        select(NotificationLog.id).where(
+            NotificationLog.subscription_id == sub_id,
+            NotificationLog.event_key == event_key,
+            NotificationLog.status == "sent",
+        ).limit(1)
+    ) is not None
+
+
+def _rule_event(sub: Subscription, rule: dict, now: datetime) -> tuple[str, bool]:
+    """返回 (事件唯一键, 当前扫描是否应发送)。"""
+    due = sub.next_renewal_date
+    if not due:
+        return "", False
+    prefix = f"renewal:{due.isoformat()}:{rule['id']}"
+    timing, unit, value = rule["timing"], rule["unit"], rule["value"]
+    days_left = (due - now.date()).days
+
+    if timing == "due":
+        return prefix, unit == "day" and days_left == 0
+    if timing == "before" and unit == "day":
+        return prefix, days_left == value
+    if timing == "after" and unit == "day":
+        days_after = -days_left
+        return f"{prefix}:repeat-{days_after // value}", days_after > 0 and days_after % value == 0
+
+    due_at = datetime.combine(due, _scan_time())
+    if timing == "before":
+        seconds_left = (due_at - now).total_seconds()
+        return prefix, 0 < seconds_left <= value * 3600
+    seconds_after = (now - due_at).total_seconds()
+    slot = int(seconds_after // (value * 3600))
+    return f"{prefix}:repeat-{slot}", slot >= 1
+
+
+def run_auto_renewals(today: date | None = None) -> dict:
+    """推进已开启自动续费的到期订阅。
+
+    EasySub 无法替用户向服务商或支付平台扣费；这里的“自动续费”表示在
+    预期自动扣款日到达后，自动维护本地的下次续费日期。若服务在到期日停机，
+    恢复后会按原账期连续推进，避免把已经自动续费的项目长期显示为过期。
+    """
+    if database.SessionLocal is None:
+        return {"renewed": 0, "skipped": "数据库未配置"}
+
+    today = today or date.today()
+    renewed: list[tuple[str, date, date, int, str]] = []
+    db = database.SessionLocal()
+    try:
+        subs = db.scalars(
+            select(Subscription).where(
+                Subscription.is_active.is_(True),
+                Subscription.auto_renew.is_(True),
+                Subscription.billing_type == "recurring",
+                Subscription.next_renewal_date.is_not(None),
+                Subscription.next_renewal_date <= today,
+            )
+        ).all()
+        for sub in subs:
+            old_due = sub.next_renewal_date
+            next_due = old_due
+            # 按原到期日推进，保留月初、月末等原始账期锚点；同时补偿停机期间
+            # 错过的多个周期。add_cycle 至少前进一个周期，因此循环必然收敛。
+            for _ in range(100_000):
+                next_due = add_cycle(next_due, sub.cycle, sub.cycle_count)
+                if next_due > today:
+                    break
+            else:
+                raise RuntimeError(f"自动续费日期推进超出安全上限：订阅 {sub.id}")
+
+            sub.next_renewal_date = next_due
+            user = db.get(User, sub.user_id)
+            if user:
+                renewed.append((sub.name, old_due, next_due, user.id, user.username))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+    # 自动续费是账期记录更新，不伪造实际付款日期；单独写活动日志以便审计。
+    for name, old_due, next_due, user_id, username in renewed:
+        activity.log(
+            "subscription.auto_renew",
+            f"自动续费记录「{name}」：下次续费 {old_due} -> {next_due}",
+            user=SimpleNamespace(id=user_id, username=username),
+        )
+    return {"renewed": len(renewed)}
+
+
+def run_reminder_scan(unit: str = "day", now: datetime | None = None) -> dict:
+    """扫描指定单位的提醒规则。天规则每天执行，小时规则每小时执行。"""
+    if unit not in {"day", "hour"}:
+        raise ValueError(f"未知提醒单位：{unit}")
+    now = now or datetime.now()
+    today = now.date()
     sent, failed = 0, 0
     if database.SessionLocal is None:
         return {"sent": 0, "failed": 0, "skipped": "数据库未配置"}
@@ -61,51 +217,83 @@ def run_reminder_scan() -> dict:
             # 暂缓的提醒不写已发记录，次日扫描会再次评估。
             if days_left >= 2 and notify.in_quiet_hours(user):
                 continue
-            for n in _parse_days(sub.remind_days_before):
-                if days_left == n and not _already_sent(db, sub.id, n, today):
-                    text_md = _build_text(db, sub, user, days_left)
-                    subject = f"续费提醒：{sub.name}"
-                    results = notify.dispatch(
-                        user, subject, notify._strip_md(text_md), text_md=text_md
+            for rule in _reminder_rules(sub):
+                if not rule["enabled"] or rule["unit"] != unit:
+                    continue
+                # 自动续费会在当天提醒之后顺延账期，逾期重复提醒仅适用于手动续费项目。
+                if rule["timing"] == "after" and sub.auto_renew:
+                    continue
+                event_key, should_send = _rule_event(sub, rule, now)
+                legacy_sent = (
+                    unit == "day"
+                    and rule["timing"] in {"before", "due"}
+                    and _already_sent(db, sub.id, rule["value"], today)
+                )
+                if not should_send or _event_sent(db, sub.id, event_key) or legacy_sent:
+                    continue
+                label = _rule_label(rule)
+                text_md = _build_text(db, sub, user, days_left, reminder_label=label)
+                subject = f"续费提醒：{sub.name}"
+                results = notify.dispatch(
+                    user, subject, notify._strip_md(text_md), text_md=text_md
+                )
+                ok_ch = [r["channel"] for r in results if r.get("ok")]
+                err = [f"{r['channel']}: {r['error']}" for r in results if not r.get("ok")]
+                if len(ok_ch) == 1:
+                    ch_label = ok_ch[0]
+                elif ok_ch:
+                    ch_label = f"multi:{len(ok_ch)}"
+                else:
+                    ch_label = "none"
+                log = NotificationLog(
+                    subscription_id=sub.id,
+                    user_id=user.id,
+                    days_before=rule["value"] if rule["timing"] == "before" and unit == "day" else 0,
+                    event_key=event_key,
+                    rule_label=label,
+                    channel=ch_label,
+                    status="sent" if ok_ch else "failed",
+                    message=text_md if ok_ch else "; ".join(err) or "无可用渠道",
+                    sent_at=datetime.utcnow(),
+                )
+                db.add(log)
+                if ok_ch:
+                    sent += 1
+                    activity.log(
+                        "notify.reminder",
+                        f"已提醒「{sub.name}」（{label}，渠道：{', '.join(ok_ch)}）",
+                        user=user,
                     )
-                    ok_ch = [r["channel"] for r in results if r.get("ok")]
-                    err = [f"{r['channel']}: {r['error']}" for r in results if not r.get("ok")]
-                    # channel 列仅 16 字符：单渠道存名字，多渠道存紧凑摘要
-                    if len(ok_ch) == 1:
-                        ch_label = ok_ch[0]
-                    elif ok_ch:
-                        ch_label = f"multi:{len(ok_ch)}"
-                    else:
-                        ch_label = "none"
-                    log = NotificationLog(
-                        subscription_id=sub.id,
-                        user_id=user.id,
-                        days_before=n,
-                        channel=ch_label,
-                        status="sent" if ok_ch else "failed",
-                        message=text_md if ok_ch else "; ".join(err) or "无可用渠道",
-                        sent_at=datetime.utcnow(),
+                if err:
+                    failed += 1
+                    activity.log(
+                        "notify.reminder",
+                        f"提醒「{sub.name}」部分渠道失败：{'; '.join(err)}",
+                        user=user,
+                        level="error" if not ok_ch else "warn",
                     )
-                    db.add(log)
-                    if ok_ch:
-                        sent += 1
-                        activity.log(
-                            "notify.reminder",
-                            f"已提醒「{sub.name}」（提前 {n} 天，渠道：{', '.join(ok_ch)}）",
-                            user=user,
-                        )
-                    if err:
-                        failed += 1
-                        activity.log(
-                            "notify.reminder",
-                            f"提醒「{sub.name}」部分渠道失败：{'; '.join(err)}",
-                            user=user,
-                            level="error" if not ok_ch else "warn",
-                        )
         db.commit()
     finally:
         db.close()
     return {"sent": sent, "failed": failed}
+
+
+def run_due_tasks() -> dict:
+    """串行执行每日到期处理，让当天提醒在自动续费顺延前发出。"""
+    return {
+        "reminders": run_reminder_scan(),
+        "hourly_reminders": run_reminder_scan(unit="hour"),
+        "auto_renewals": run_auto_renewals(),
+        "date_reminders": run_date_reminders(),
+    }
+
+
+def run_hourly_reminder_scan() -> dict:
+    """每小时执行小时规则；每日主任务所在小时交由主任务处理，避免并发。"""
+    now = datetime.now()
+    if now.hour == _scan_time().hour:
+        return {"sent": 0, "failed": 0, "skipped": "由每日任务处理"}
+    return run_reminder_scan(unit="hour", now=now)
 
 
 def run_date_reminders() -> dict:
@@ -250,7 +438,9 @@ def _escape_md(text: str) -> str:
     return text
 
 
-def _build_text(db, sub: Subscription, user: User, days_left: int) -> str:
+def _build_text(
+    db, sub: Subscription, user: User, days_left: int, reminder_label: str | None = None
+) -> str:
     """构造一条信息完整、措辞友好的续费提醒。"""
     amount = f"{sub.amount:.2f} {sub.currency}"
     in_base = exchange.convert(db, sub.amount, sub.currency, user.base_currency)
@@ -258,7 +448,10 @@ def _build_text(db, sub: Subscription, user: User, days_left: int) -> str:
     if abs(in_base - sub.amount) > 1e-6 or sub.currency != user.base_currency:
         base_str = f"（≈ {in_base:.2f} {user.base_currency}）"
 
-    if days_left <= 0:
+    if days_left < 0:
+        when = f"⚠️ *已逾期 {-days_left} 天*"
+        head = f"🔔 *续费提醒*｜已逾期 {-days_left} 天"
+    elif days_left == 0:
         when = "⚠️ *今天到期*"
         head = "🔔 *续费提醒*｜今天就到期啦"
     else:
@@ -279,6 +472,8 @@ def _build_text(db, sub: Subscription, user: User, days_left: int) -> str:
     if cat:
         lines.append(f"🗂️ 分类：{_escape_md(cat.name)}")
     lines.append(f"📅 到期：*{sub.next_renewal_date}*（{when}）")
+    if reminder_label:
+        lines.append(f"⏰ 规则：{reminder_label}")
     lines.append(f"💰 金额：*{amount}*{base_str} · {cycle_str}")
     if pm:
         lines.append(f"💳 付款：{_escape_md(pm.name)}")
@@ -291,7 +486,9 @@ def _build_text(db, sub: Subscription, user: User, days_left: int) -> str:
         lines.append(f"🔗 官网：{sub.url}")
 
     lines.append("")
-    if days_left <= 0:
+    if days_left < 0:
+        lines.append("👉 该项目仍未续费，请尽快处理，恢复服务或避免账号失效。")
+    elif days_left == 0:
         lines.append("👉 别忘了今天处理一下，保号 / 续费就万无一失～")
     else:
         lines.append("👉 早点安排续费，省心又安心，避免到期失效～")
@@ -308,12 +505,29 @@ def start_scheduler() -> None:
     except Exception:  # noqa: BLE001
         pass
 
+    # 启动恢复仅补齐昨天及更早的遗漏，保留今天的账期给每日任务先提醒后顺延。
+    try:
+        run_auto_renewals(today=date.today() - timedelta(days=1))
+    except Exception as e:  # noqa: BLE001
+        print(f"[scheduler] 自动续费补偿扫描失败：{type(e).__name__}: {e}")
+
     _scheduler = BackgroundScheduler(timezone=settings.tz)
     _scheduler.add_job(
-        run_reminder_scan,
+        run_due_tasks,
         CronTrigger(hour=hour, minute=minute),
-        id="daily_reminder_scan",
+        id="daily_due_tasks",
         replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    # 小时规则在每小时的同一分钟扫描；每日主任务所在小时由 run_due_tasks 串行处理。
+    _scheduler.add_job(
+        run_hourly_reminder_scan,
+        CronTrigger(minute=minute),
+        id="hourly_reminder_scan",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
     # 每天凌晨 4 点刷新汇率
     _scheduler.add_job(
@@ -327,13 +541,6 @@ def start_scheduler() -> None:
         _auto_backup_job,
         CronTrigger(hour=3, minute=30),
         id="daily_auto_backup",
-        replace_existing=True,
-    )
-    # 每天与提醒同一时间检查 试用/取消/卡到期
-    _scheduler.add_job(
-        run_date_reminders,
-        CronTrigger(hour=hour, minute=minute),
-        id="daily_date_reminders",
         replace_existing=True,
     )
     # 每天 08:00 检查是否到用户设定的每周汇总日
