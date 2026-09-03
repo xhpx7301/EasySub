@@ -16,7 +16,7 @@ services:
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin123          # 首次初始化后请在网页里改密码
       ADMIN_EMAIL: admin@example.com
-      REMINDER_SCAN_TIME: "09:00"       # 每天扫描到期订阅、发送提醒的时间
+      REMINDER_SCAN_TIME: "09:00"       # 初始默认值；管理员可在网页设置中修改
       EXCHANGE_API_BASE: USD
       EXCHANGE_API_URL: https://open.er-api.com/v6/latest/
       TELEGRAM_BOT_TOKEN: ""            # 可留空，后续在网页「设置」里配置

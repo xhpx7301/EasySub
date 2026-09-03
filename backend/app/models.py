@@ -114,6 +114,37 @@ class ExchangeRate(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class SystemSetting(Base):
+    """全站运行配置；不属于任何单个用户。"""
+
+    __tablename__ = "system_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class IconLibraryItem(Base):
+    """可在网页维护的图标；user_id 为空表示全局图标。"""
+
+    __tablename__ = "icon_library_items"
+    __table_args__ = (UniqueConstraint("slug", name="uq_icon_library_slug"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    slug: Mapped[str] = mapped_column(String(160), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    category: Mapped[str] = mapped_column(String(64), default="other")
+    icon_url: Mapped[str] = mapped_column(String(512))
+    is_builtin: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
@@ -215,7 +246,7 @@ class NotificationLog(Base):
     subscription_id: Mapped[int] = mapped_column(ForeignKey("subscriptions.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     days_before: Mapped[int] = mapped_column(Integer)
-    # 用规则 id、账期和重复序号组成，避免小时/逾期重复提醒在同一轮次重复发送。
+    # 用规则 id 和账期组成，确保同一条提醒规则在一个账期内只发送一次。
     event_key: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
     rule_label: Mapped[str | None] = mapped_column(String(64), nullable=True)
     channel: Mapped[str] = mapped_column(String(16), default="telegram")

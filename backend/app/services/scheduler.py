@@ -9,10 +9,12 @@ from sqlalchemy import select
 from app import activity, database
 from app.billing import add_cycle
 from app.config import settings
-from app.models import Category, NotificationLog, PaymentMethod, Subscription, User
+from app.models import Category, NotificationLog, PaymentMethod, Subscription, SystemSetting, User
 from app.services import exchange, notify
 
 _scheduler: BackgroundScheduler | None = None
+_reminder_scan_time: str | None = None
+_REMINDER_SCAN_TIME_KEY = "reminder_scan_time"
 
 
 def _parse_days(raw: str) -> list[int]:
@@ -24,12 +26,58 @@ def _parse_days(raw: str) -> list[int]:
     return out
 
 
-def _scan_time() -> time:
+def normalize_reminder_scan_time(value: str) -> str:
+    """验证 HH:MM 格式并规范化为零填充形式。"""
     try:
-        hour, minute = (int(x) for x in settings.reminder_scan_time.split(":"))
-        return time(hour=hour, minute=minute)
-    except (TypeError, ValueError):
-        return time(hour=9, minute=0)
+        return datetime.strptime(value, "%H:%M").strftime("%H:%M")
+    except (TypeError, ValueError) as e:
+        raise ValueError("提醒扫描时间必须为 HH:MM 格式") from e
+
+
+def reminder_scan_time() -> str:
+    """返回当前生效的扫描时间；环境变量只作为首次运行的默认值。"""
+    if _reminder_scan_time:
+        return _reminder_scan_time
+    try:
+        return normalize_reminder_scan_time(settings.reminder_scan_time)
+    except ValueError:
+        return "09:00"
+
+
+def _scan_time() -> time:
+    hour, minute = (int(x) for x in reminder_scan_time().split(":"))
+    return time(hour=hour, minute=minute)
+
+
+def _load_reminder_scan_time() -> str:
+    """从系统设置恢复扫描时间；数据库不可用时回退到环境变量。"""
+    if database.SessionLocal is not None:
+        db = database.SessionLocal()
+        try:
+            row = db.get(SystemSetting, _REMINDER_SCAN_TIME_KEY)
+            if row:
+                return normalize_reminder_scan_time(row.value)
+        except Exception:  # noqa: BLE001
+            pass
+        finally:
+            db.close()
+    return reminder_scan_time()
+
+
+def reschedule_reminder_scans(value: str) -> str:
+    """立即让已运行的每日和小时提醒任务使用新的扫描时间。"""
+    global _reminder_scan_time
+    normalized = normalize_reminder_scan_time(value)
+    _reminder_scan_time = normalized
+    if _scheduler is not None:
+        hour, minute = (int(part) for part in normalized.split(":"))
+        _scheduler.reschedule_job(
+            "daily_due_tasks", trigger=CronTrigger(hour=hour, minute=minute)
+        )
+        _scheduler.reschedule_job(
+            "hourly_reminder_scan", trigger=CronTrigger(minute=minute)
+        )
+    return normalized
 
 
 def _reminder_rules(sub: Subscription) -> list[dict]:
@@ -78,7 +126,7 @@ def _rule_label(rule: dict) -> str:
     unit = "天" if rule["unit"] == "day" else "小时"
     if rule["timing"] == "before":
         return f"到期前 {rule['value']} {unit}"
-    return f"到期后每 {rule['value']} {unit}"
+    return f"到期后 {rule['value']} {unit}"
 
 
 def _already_sent(db, sub_id: int, days_before: int, on_day: date) -> bool:
@@ -119,15 +167,14 @@ def _rule_event(sub: Subscription, rule: dict, now: datetime) -> tuple[str, bool
         return prefix, days_left == value
     if timing == "after" and unit == "day":
         days_after = -days_left
-        return f"{prefix}:repeat-{days_after // value}", days_after > 0 and days_after % value == 0
+        return prefix, days_after == value
 
     due_at = datetime.combine(due, _scan_time())
     if timing == "before":
         seconds_left = (due_at - now).total_seconds()
         return prefix, 0 < seconds_left <= value * 3600
     seconds_after = (now - due_at).total_seconds()
-    slot = int(seconds_after // (value * 3600))
-    return f"{prefix}:repeat-{slot}", slot >= 1
+    return prefix, seconds_after >= value * 3600
 
 
 def run_auto_renewals(today: date | None = None) -> dict:
@@ -220,7 +267,7 @@ def run_reminder_scan(unit: str = "day", now: datetime | None = None) -> dict:
             for rule in _reminder_rules(sub):
                 if not rule["enabled"] or rule["unit"] != unit:
                     continue
-                # 自动续费会在当天提醒之后顺延账期，逾期重复提醒仅适用于手动续费项目。
+                # 自动续费会在当天提醒之后顺延账期，逾期提醒仅适用于手动续费项目。
                 if rule["timing"] == "after" and sub.auto_renew:
                     continue
                 event_key, should_send = _rule_event(sub, rule, now)
@@ -496,14 +543,11 @@ def _build_text(
 
 
 def start_scheduler() -> None:
-    global _scheduler
+    global _scheduler, _reminder_scan_time
     if _scheduler is not None:
         return
-    hour, minute = 9, 0
-    try:
-        hour, minute = (int(x) for x in settings.reminder_scan_time.split(":"))
-    except Exception:  # noqa: BLE001
-        pass
+    _reminder_scan_time = _load_reminder_scan_time()
+    hour, minute = (int(x) for x in _reminder_scan_time.split(":"))
 
     # 启动恢复仅补齐昨天及更早的遗漏，保留今天的账期给每日任务先提醒后顺延。
     try:

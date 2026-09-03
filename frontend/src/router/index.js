@@ -11,6 +11,7 @@ const routes = [
       { path: '', redirect: '/dashboard' },
       { path: 'dashboard', component: () => import('../views/Dashboard.vue') },
       { path: 'subscriptions', component: () => import('../views/Subscriptions.vue') },
+      { path: 'icons', component: () => import('../views/IconLibrary.vue') },
       { path: 'calendar', component: () => import('../views/Calendar.vue') },
       { path: 'reports', component: () => import('../views/Reports.vue') },
       { path: 'notifications', component: () => import('../views/Notifications.vue') },

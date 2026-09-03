@@ -105,6 +105,10 @@ class CurrencyIn(BaseModel):
     rate_to_base: float | None = None  # 自定义货币可手动指定相对基准货币的汇率
 
 
+class ReminderScanTimeIn(BaseModel):
+    reminder_scan_time: str
+
+
 # ---------- Subscription ----------
 class SubscriptionIn(BaseModel):
     name: str

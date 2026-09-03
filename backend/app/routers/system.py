@@ -3,20 +3,23 @@ import time
 from datetime import datetime
 
 import httpx
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app import database
+from app import activity, database
 from app.config import settings
 from app.database import get_db
-from app.deps import get_current_user
-from app.models import Subscription, User
+from app.deps import get_admin_user, get_current_user
+from app.models import Subscription, SystemSetting, User
+from app.schemas import ReminderScanTimeIn
+from app.services import scheduler
 
 router = APIRouter(prefix="/api/system", tags=["system"])
 
 APP_VERSION = "1.11.2"
 GITHUB_REPO = "suyijun8182/easysub"
+_REMINDER_SCAN_TIME_KEY = "reminder_scan_time"
 
 # 版本检查结果缓存（避免频繁请求 GitHub，未认证限流 60 次/小时）
 _ver_cache: dict = {"at": 0.0, "data": None}
@@ -83,7 +86,7 @@ def info(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
         "db_configured": database.is_configured(),
         "server_time": datetime.now().isoformat(timespec="seconds"),
         "timezone": settings.tz,
-        "reminder_scan_time": settings.reminder_scan_time,
+        "reminder_scan_time": scheduler.reminder_scan_time(),
         "your_subscriptions": your_total,
         "your_active": your_active,
         "telegram_enabled": user.telegram_enabled,
@@ -92,3 +95,27 @@ def info(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
         data["total_users"] = db.scalar(select(func.count()).select_from(User))
         data["total_subscriptions"] = db.scalar(select(func.count()).select_from(Subscription))
     return data
+
+
+@router.put("/reminder-scan-time")
+def update_reminder_scan_time(
+    payload: ReminderScanTimeIn,
+    user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """管理员更新全局提醒扫描时间，并立即重排本进程的定时任务。"""
+    try:
+        value = scheduler.normalize_reminder_scan_time(payload.reminder_scan_time)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    row = db.get(SystemSetting, _REMINDER_SCAN_TIME_KEY)
+    if row is None:
+        db.add(SystemSetting(key=_REMINDER_SCAN_TIME_KEY, value=value))
+    else:
+        row.value = value
+    db.commit()
+
+    scheduler.reschedule_reminder_scans(value)
+    activity.log("system.reminder_scan_time", f"提醒扫描时间更新为 {value}", user=user)
+    return {"reminder_scan_time": value}

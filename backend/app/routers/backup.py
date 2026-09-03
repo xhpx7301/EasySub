@@ -15,9 +15,9 @@ from app import activity
 from app.billing import compute_next_renewal
 from app.database import get_db
 from app.deps import get_admin_user, get_current_user
-from app.models import Bundle, Category, Currency, PaymentMethod, Subscription, User
+from app.models import Bundle, Category, Currency, PaymentMethod, Subscription, SystemSetting, User
 from app.security import hash_password
-from app.services import notify
+from app.services import notify, scheduler
 
 router = APIRouter(prefix="/api/backup", tags=["backup"])
 
@@ -328,6 +328,9 @@ def build_full_backup(db: Session) -> dict:
         "app": "EasySub",
         "scope": "all",
         "exported_at": datetime.utcnow().isoformat(timespec="seconds"),
+        "system_settings": {
+            row.key: row.value for row in db.scalars(select(SystemSetting)).all()
+        },
         "users": payload_users,
     }
 
@@ -381,6 +384,7 @@ def import_all(
     existing_users = {u.username: u for u in db.scalars(select(User)).all()}
     created_users = 0
     total_subs = 0
+    restored_scan_time = None
 
     for ub in users_in:
         meta = ub.get("user") or {}
@@ -416,7 +420,24 @@ def import_all(
 
         total_subs += _restore_entities(db, target, ub, payload.replace)
 
+    system_settings = data.get("system_settings")
+    if isinstance(system_settings, dict):
+        raw_scan_time = system_settings.get("reminder_scan_time")
+        if raw_scan_time is not None:
+            try:
+                restored_scan_time = scheduler.normalize_reminder_scan_time(raw_scan_time)
+            except ValueError:
+                restored_scan_time = None
+            if restored_scan_time:
+                row = db.get(SystemSetting, "reminder_scan_time")
+                if row is None:
+                    db.add(SystemSetting(key="reminder_scan_time", value=restored_scan_time))
+                else:
+                    row.value = restored_scan_time
+
     db.commit()
+    if restored_scan_time:
+        scheduler.reschedule_reminder_scans(restored_scan_time)
     activity.log(
         "backup.import_all",
         f"管理员恢复整站备份：新建 {created_users} 个用户，共导入 {total_subs} 个订阅",

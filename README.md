@@ -121,7 +121,7 @@ NAS 图形界面：在镜像里重新拉取 `latest`，再重建容器（保持 
 | `JWT_SECRET` | ✅ | 登录令牌密钥，请用 `openssl rand -hex 32` 生成随机串 |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` | ✅ | 首次初始化创建的管理员账号 |
 | `TZ` | | 时区，如 `Asia/Shanghai` |
-| `REMINDER_SCAN_TIME` | | 每天扫描到期订阅、发送提醒的时间，如 `09:00` |
+| `REMINDER_SCAN_TIME` | | 每天扫描到期订阅、发送提醒的初始默认时间，如 `09:00`；管理员可在网页设置中修改 |
 | `TELEGRAM_BOT_TOKEN` | | 可留空，后续在网页「设置」里配置 |
 | `EXCHANGE_API_BASE` / `EXCHANGE_API_URL` | | 汇率数据源（已给默认免费源） |
 

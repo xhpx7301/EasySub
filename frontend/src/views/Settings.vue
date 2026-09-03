@@ -92,6 +92,15 @@
         <button class="btn" style="width:auto" @click="savePrefs">{{ t('settings.save') }}</button>
       </div>
       <p v-if="prefsMsg" class="ok">{{ prefsMsg }}</p>
+      <div v-if="auth.user?.is_admin" class="scan-time-setting">
+        <label>{{ t('remind.scanTime') }}</label>
+        <div class="row" style="align-items:center;gap:10px">
+          <input v-model="reminderScanTime" type="time" style="width:auto" />
+          <button class="btn ghost sm" style="width:auto" :disabled="scanTimeSaving" @click="saveReminderScanTime">{{ t('settings.save') }}</button>
+        </div>
+        <p class="muted" style="font-size:12px;margin:6px 0 0">{{ t('remind.scanTimeTip') }}</p>
+        <p v-if="scanTimeMsg" :class="scanTimeOk ? 'ok' : 'err'">{{ scanTimeMsg }}</p>
+      </div>
     </div>
 
     <!-- 数据备份与恢复 -->
@@ -317,6 +326,10 @@ async function revokeToken(id) {
 }
 
 const prefsMsg = ref('')
+const reminderScanTime = ref('')
+const scanTimeMsg = ref('')
+const scanTimeOk = ref(false)
+const scanTimeSaving = ref(false)
 const weekdays = computed(() => [
   t('wk.mon'), t('wk.tue'), t('wk.wed'), t('wk.thu'), t('wk.fri'), t('wk.sat'), t('wk.sun')
 ])
@@ -330,6 +343,22 @@ async function savePrefs() {
   })
   prefsMsg.value = t('settings.saved')
   setTimeout(() => (prefsMsg.value = ''), 3000)
+}
+async function saveReminderScanTime() {
+  scanTimeMsg.value = ''
+  scanTimeSaving.value = true
+  try {
+    const { data } = await api.put('/api/system/reminder-scan-time', { reminder_scan_time: reminderScanTime.value })
+    reminderScanTime.value = data.reminder_scan_time
+    if (sys.value) sys.value.reminder_scan_time = data.reminder_scan_time
+    scanTimeOk.value = true
+    scanTimeMsg.value = t('settings.saved')
+  } catch (e) {
+    scanTimeOk.value = false
+    scanTimeMsg.value = e.response?.data?.detail || 'Error'
+  } finally {
+    scanTimeSaving.value = false
+  }
 }
 
 const backupMsg = ref('')
@@ -490,6 +519,7 @@ async function runAutoBackup() {
 onMounted(async () => {
   currencies.value = (await api.get('/api/currencies')).data
   sys.value = (await api.get('/api/system/info')).data
+  reminderScanTime.value = sys.value.reminder_scan_time || ''
   loadRates()
   loadTokens()
   checkUpdate()
@@ -521,6 +551,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .tg-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 .switch { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-soft); cursor: pointer; width: auto; margin: 0; }
 .switch input { width: auto; }
+.scan-time-setting { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
 .theme-picker { display: flex; gap: 10px; margin: 6px 0 4px; }
 .th { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; padding: 0; }
 .th.on { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }

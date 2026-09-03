@@ -193,10 +193,12 @@
                 <input type="file" accept="image/*" hidden @change="uploadIcon" />
               </label>
             </div>
+            <input v-model="iconSearch" class="icon-search" :placeholder="t('sub.iconSearchPh')" type="search" />
             <div class="lib-grid">
-              <img v-for="it in iconLib" :key="it.slug" :src="it.icon" :title="it.name"
+              <img v-for="it in filteredIconLib" :key="it.slug" :src="it.icon" :title="`${it.name} · ${it.domain}`"
                    class="lib-ico" @click="form.icon = it.icon" />
             </div>
+            <div v-if="!filteredIconLib.length" class="muted icon-empty">{{ t('sub.iconSearchEmpty') }}</div>
           </details>
         </div>
 
@@ -428,6 +430,7 @@ const formErr = ref('')
 const form = ref({})
 const newMember = ref('')
 const iconUrl = ref('')
+const iconSearch = ref('')
 const bundleMode = ref('none')
 const newBundleName = ref('')
 const suggestions = ref([])
@@ -700,7 +703,7 @@ function setFilter(f) { filter.value = f; load() }
 
 function openNew() {
   form.value = blank(); formErr.value = ''; bundleMode.value = 'none'
-  newBundleName.value = ''; suggestions.value = []; showForm.value = true
+  newBundleName.value = ''; suggestions.value = []; iconSearch.value = ''; showForm.value = true
   recomputeNext()
 }
 function openEdit(s) {
@@ -712,6 +715,7 @@ function openEdit(s) {
     reminder_rules: normalizeReminderRules(s.reminder_rules, s.remind_days_before)
   }
   formErr.value = ''; suggestions.value = []
+  iconSearch.value = ''
   bundleMode.value = s.bundle_id ? 'join' : 'none'
   newBundleName.value = ''
   showForm.value = true
@@ -723,6 +727,13 @@ function onNameInput() {
   suggestions.value = q.length < 1 ? []
     : iconLib.value.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 6)
 }
+const filteredIconLib = computed(() => {
+  const q = iconSearch.value.trim().toLowerCase()
+  if (!q) return iconLib.value
+  return iconLib.value.filter((item) =>
+    [item.name, item.domain].some((value) => String(value || '').toLowerCase().includes(q))
+  )
+})
 // 服务库分类 key -> 在用户分类名中查找的关键字
 const CAT_KEYWORDS = {
   streaming: 'streaming', music: 'music', ai: 'ai', gaming: 'gaming', vps: 'vps',
@@ -1002,9 +1013,11 @@ h1 { margin-top: 0; }
 .suggest-i { display: flex; align-items: center; gap: 8px; padding: 7px 10px; cursor: pointer; font-size: 14px; }
 .suggest-i:hover { background: var(--primary-soft); }
 .icon-lib summary { cursor: pointer; font-size: 13px; color: var(--text-soft); }
+.icon-search { margin: 0 0 8px; }
 .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, 34px); gap: 8px; max-height: 140px; overflow: auto; }
 .lib-ico { width: 30px; height: 30px; border-radius: 6px; padding: 3px; border: 1px solid var(--border); cursor: pointer; object-fit: contain; }
 .lib-ico:hover { border-color: var(--primary); }
+.icon-empty { font-size: 12px; padding: 4px 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .chip { background: var(--primary-soft); color: var(--primary); padding: 3px 8px; border-radius: 16px; font-size: 13px; }
 .radio-row { gap: 18px; }

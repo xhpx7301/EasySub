@@ -9,7 +9,7 @@ const zh = {
     testOk: '连接成功', testFail: '连接失败', tip: '提示：若数据库也在 Docker Compose 内，主机填服务名（如 db）；否则填 NAS 局域网 IP。',
     done: '配置完成，正在跳转登录...'
   },
-  nav: { dashboard: '仪表盘', subscriptions: '订阅管理', calendar: '日历', reports: '报表分析', notifications: '通知中心', notifyConfig: '通知配置', logs: '实时日志', settings: '设置', users: '用户管理', logout: '退出' },
+  nav: { dashboard: '仪表盘', subscriptions: '订阅管理', icons: '图标库', calendar: '日历', reports: '报表分析', notifications: '通知中心', notifyConfig: '通知配置', logs: '实时日志', settings: '设置', users: '用户管理', logout: '退出' },
   notifyCfg: {
     title: '通知', save: '保存通知配置', test: '测试通知', saved: '已保存', testOk: '测试通知已发送',
     tgApiBase: 'TG API 反代（可选）', httpProxy: 'HTTP 代理（可选）',
@@ -101,13 +101,13 @@ const zh = {
     category: '分类', payment: '付款方式', billingType: '计费类型', recurring: '周期订阅', oneTime: '一次性买断',
     cycle: '周期', cycleCount: '每', day: '天', week: '周', month: '月', year: '年',
     startDate: '开始日期', nextRenewal: '下次续费', endDate: '结束日期', url: '链接', notes: '备注',
-    remindDays: '提前提醒(天，逗号分隔)', reminderRules: '提前提醒', reminderRulesHint: '可按天或小时设置到期前、当天和逾期后的提醒。', applyPreset: '7 / 3 / 1 / 当天', addRule: '添加提醒规则', enabled: '启用', beforeDue: '到期前', onDue: '到期当天', afterDue: '到期后每', days: '天', hours: '小时', removeRule: '删除提醒规则', afterAutoHint: '已开启自动续费，到期后规则不会执行。', calcNextTip: '按开始日期和周期计算下次续费日期', active: '生效中', autoRenew: '自动续费', autoRenewTip: '到期后自动顺延下次续费日期，仅更新本地记录，不会向服务商发起扣款。',
+    remindDays: '提前提醒(天，逗号分隔)', reminderRules: '提前提醒', reminderRulesHint: '可按天或小时设置到期前、当天和到期后的单次提醒。', applyPreset: '7 / 3 / 1 / 当天', addRule: '添加提醒规则', enabled: '启用', beforeDue: '到期前', onDue: '到期当天', afterDue: '到期后', days: '天', hours: '小时', removeRule: '删除提醒规则', afterAutoHint: '已开启自动续费，到期后规则不会执行。', calcNextTip: '按开始日期和周期计算下次续费日期', active: '生效中', autoRenew: '自动续费', autoRenewTip: '到期后自动顺延下次续费日期，仅更新本地记录，不会向服务商发起扣款。',
     icon: '图标', save: '保存', cancel: '取消', delete: '删除', renew: '续费', confirmDelete: '确认删除该订阅？',
     uploadIcon: '上传图标', filterAll: '全部', filterRecurring: '周期', filterOneTime: '买断',
     plan: '套餐', planPh: '如 高级版 / 专业版',
     secService: '服务', secPrice: '价格信息', secBilling: '计费信息', secClassify: '分类与支付',
     secFamily: '家庭共享', secBundle: '捆绑包', secExtra: '附加信息', secCalendar: '日历',
-    iconLibrary: '图标库', iconUrl: '图标 URL', iconUrlImport: '下载', nameSuggest: '常用服务（点击选择）',
+    iconLibrary: '图标库', iconUrl: '图标 URL', iconUrlImport: '下载', iconSearchPh: '搜索图标名称或域名', iconSearchEmpty: '没有匹配的图标', nameSuggest: '常用服务（点击选择）',
     family: '家庭成员', familyAdd: '添加成员', familyPh: '成员名称',
     bundleNone: '不使用捆绑包', bundleJoin: '加入已有捆绑包', bundleCreate: '创建捆绑包', bundleName: '捆绑包名称',
     showInCalendar: '在日历中显示', website: '官方网站',
@@ -123,6 +123,7 @@ const zh = {
     remark: '个性化备注', remarkPh: '如：家庭主力机 / 香港 CN2（会显示在卡片上）',
     ipLabel: 'IP 地址（选填）', ipv4: 'IPv4', ipv6: 'IPv6'
   },
+  icons: { title: '图标库', add: '新增图标', addTitle: '新增图标', editTitle: '编辑图标', searchPh: '搜索名称、域名或分类', all: '全部', global: '全局', personal: '我的', name: '名称', domain: '域名', category: '分类', iconUrl: '图标地址', upload: '上传图标', enabled: '启用', globalNew: '添加到全局图标库', edit: '编辑', delete: '删除', deleteConfirm: '确定删除图标「{name}」吗？', saved: '已保存', disabled: '已停用', empty: '暂无图标' },
   calendar: { title: '续费日历', noEvents: '本月无续费', today: '今天', more: '还有 {n} 项' },
   reports: {
     title: '报表分析', overview: '总览', insights: '支出洞察', categoryDetail: '分类明细', recentPayments: '近期付款',
@@ -169,7 +170,7 @@ const zh = {
     title: '提醒与预算', budget: '月度预算', budgetPh: '0 或留空 = 不限',
     quietStart: '免打扰开始', quietEnd: '免打扰结束',
     quietHint: '免打扰时段内仅暂缓非紧急提醒；到期当天/次日的提醒仍会照常发送。',
-    digest: '每周汇总推送', over: '已超预算', budgetLeft: '预算剩余'
+    digest: '每周汇总推送', scanTime: '提醒扫描时间', scanTimeTip: '全站统一生效，保存后立即重排定时任务。', over: '已超预算', budgetLeft: '预算剩余'
   },
   wk: { mon: '周一', tue: '周二', wed: '周三', thu: '周四', fri: '周五', sat: '周六', sun: '周日' },
   sec: {
@@ -196,7 +197,7 @@ const en = {
     testOk: 'Connected', testFail: 'Connection failed', tip: 'Tip: if MySQL runs in the same Compose, use the service name (e.g. db) as host; otherwise use the NAS LAN IP.',
     done: 'Done, redirecting to login...'
   },
-  nav: { dashboard: 'Dashboard', subscriptions: 'Subscriptions', calendar: 'Calendar', reports: 'Reports', notifications: 'Notifications', notifyConfig: 'Notify Channels', logs: 'Live Logs', settings: 'Settings', users: 'Users', logout: 'Logout' },
+  nav: { dashboard: 'Dashboard', subscriptions: 'Subscriptions', icons: 'Icon library', calendar: 'Calendar', reports: 'Reports', notifications: 'Notifications', notifyConfig: 'Notify Channels', logs: 'Live Logs', settings: 'Settings', users: 'Users', logout: 'Logout' },
   notifyCfg: {
     title: 'Notifications', save: 'Save config', test: 'Test', saved: 'Saved', testOk: 'Test notification sent',
     tgApiBase: 'TG API proxy (optional)', httpProxy: 'HTTP proxy (optional)',
@@ -287,13 +288,13 @@ const en = {
     category: 'Category', payment: 'Payment', billingType: 'Billing', recurring: 'Recurring', oneTime: 'One-time',
     cycle: 'Cycle', cycleCount: 'Every', day: 'day', week: 'week', month: 'month', year: 'year',
     startDate: 'Start', nextRenewal: 'Next renewal', endDate: 'End', url: 'URL', notes: 'Notes',
-    remindDays: 'Remind days before (comma)', reminderRules: 'Reminder rules', reminderRulesHint: 'Set reminders before, on, or after the due date by day or hour.', applyPreset: '7 / 3 / 1 / due', addRule: 'Add reminder rule', enabled: 'Enabled', beforeDue: 'Before due', onDue: 'Due day', afterDue: 'Every after', days: 'days', hours: 'hours', removeRule: 'Remove reminder rule', afterAutoHint: 'After-due rules do not run while auto renew is enabled.', calcNextTip: 'Calculate the next renewal date from start and cycle', active: 'Active', autoRenew: 'Auto renew', autoRenewTip: 'When due, advances the local renewal date. It does not charge the provider or payment method.',
+    remindDays: 'Remind days before (comma)', reminderRules: 'Reminder rules', reminderRulesHint: 'Set one-time reminders before, on, or after the due date by day or hour.', applyPreset: '7 / 3 / 1 / due', addRule: 'Add reminder rule', enabled: 'Enabled', beforeDue: 'Before due', onDue: 'Due day', afterDue: 'After due', days: 'days', hours: 'hours', removeRule: 'Remove reminder rule', afterAutoHint: 'After-due rules do not run while auto renew is enabled.', calcNextTip: 'Calculate the next renewal date from start and cycle', active: 'Active', autoRenew: 'Auto renew', autoRenewTip: 'When due, advances the local renewal date. It does not charge the provider or payment method.',
     icon: 'Icon', save: 'Save', cancel: 'Cancel', delete: 'Delete', renew: 'Renew', confirmDelete: 'Delete this subscription?',
     uploadIcon: 'Upload icon', filterAll: 'All', filterRecurring: 'Recurring', filterOneTime: 'One-time',
     plan: 'Plan', planPh: 'e.g. Premium / Pro',
     secService: 'Service', secPrice: 'Price', secBilling: 'Billing', secClassify: 'Category & Payment',
     secFamily: 'Family sharing', secBundle: 'Bundle', secExtra: 'Extra', secCalendar: 'Calendar',
-    iconLibrary: 'Icon library', iconUrl: 'Icon URL', iconUrlImport: 'Import', nameSuggest: 'Common services (click to pick)',
+    iconLibrary: 'Icon library', iconUrl: 'Icon URL', iconUrlImport: 'Import', iconSearchPh: 'Search icon name or domain', iconSearchEmpty: 'No matching icons', nameSuggest: 'Common services (click to pick)',
     family: 'Members', familyAdd: 'Add member', familyPh: 'Member name',
     bundleNone: 'No bundle', bundleJoin: 'Join existing bundle', bundleCreate: 'Create bundle', bundleName: 'Bundle name',
     showInCalendar: 'Show in calendar', website: 'Website',
@@ -309,6 +310,7 @@ const en = {
     remark: 'Personal note', remarkPh: 'e.g. main box / HK CN2 (shown on card)',
     ipLabel: 'IP address (optional)', ipv4: 'IPv4', ipv6: 'IPv6'
   },
+  icons: { title: 'Icon library', add: 'Add icon', addTitle: 'Add icon', editTitle: 'Edit icon', searchPh: 'Search name, domain, or category', all: 'All', global: 'Global', personal: 'My icons', name: 'Name', domain: 'Domain', category: 'Category', iconUrl: 'Icon URL', upload: 'Upload icon', enabled: 'Enabled', globalNew: 'Add to global library', edit: 'Edit', delete: 'Delete', deleteConfirm: 'Delete icon "{name}"?', saved: 'Saved', disabled: 'Disabled', empty: 'No icons' },
   calendar: { title: 'Renewal Calendar', noEvents: 'No renewals this month', today: 'Today', more: '+{n} more' },
   reports: {
     title: 'Reports', overview: 'Overview', insights: 'Insights', categoryDetail: 'Category detail', recentPayments: 'Recent payments',
@@ -355,7 +357,7 @@ const en = {
     title: 'Reminders & budget', budget: 'Monthly budget', budgetPh: '0 or empty = no limit',
     quietStart: 'Quiet from', quietEnd: 'Quiet to',
     quietHint: 'Quiet hours only defer non-urgent reminders; due-today/tomorrow reminders still send.',
-    digest: 'Weekly digest', over: 'Over budget', budgetLeft: 'Budget left'
+    digest: 'Weekly digest', scanTime: 'Reminder scan time', scanTimeTip: 'Applies to the whole site and reschedules tasks immediately after saving.', over: 'Over budget', budgetLeft: 'Budget left'
   },
   wk: { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' },
   sec: {
@@ -382,7 +384,7 @@ const ru = {
     testOk: 'Подключено', testFail: 'Ошибка подключения', tip: 'Подсказка: если MySQL в том же Compose — укажите имя сервиса (например db); иначе IP NAS в локальной сети.',
     done: 'Готово, переход ко входу...'
   },
-  nav: { dashboard: 'Панель', subscriptions: 'Подписки', calendar: 'Календарь', reports: 'Отчёты', notifications: 'Уведомления', notifyConfig: 'Каналы', logs: 'Логи', settings: 'Настройки', users: 'Пользователи', logout: 'Выход' },
+  nav: { dashboard: 'Панель', subscriptions: 'Подписки', icons: 'Библиотека иконок', calendar: 'Календарь', reports: 'Отчёты', notifications: 'Уведомления', notifyConfig: 'Каналы', logs: 'Логи', settings: 'Настройки', users: 'Пользователи', logout: 'Выход' },
   notifyCfg: {
     title: 'Уведомления', save: 'Сохранить', test: 'Тест', saved: 'Сохранено', testOk: 'Тестовое уведомление отправлено',
     tgApiBase: 'TG API прокси (опц.)', httpProxy: 'HTTP прокси (опц.)',
@@ -473,13 +475,13 @@ const ru = {
     category: 'Категория', payment: 'Оплата', billingType: 'Тип', recurring: 'Регулярная', oneTime: 'Разовая',
     cycle: 'Цикл', cycleCount: 'Каждые', day: 'день', week: 'неделя', month: 'месяц', year: 'год',
     startDate: 'Начало', nextRenewal: 'Продление', endDate: 'Конец', url: 'Ссылка', notes: 'Заметки',
-    remindDays: 'Напомнить за (дней)', reminderRules: 'Правила напоминаний', reminderRulesHint: 'Настройте напоминания до, в день и после срока по дням или часам.', applyPreset: '7 / 3 / 1 / день срока', addRule: 'Добавить правило', enabled: 'Включено', beforeDue: 'До срока', onDue: 'В день срока', afterDue: 'Каждые после', days: 'дней', hours: 'часов', removeRule: 'Удалить правило', afterAutoHint: 'Правила после срока не выполняются при автопродлении.', calcNextTip: 'Рассчитать дату продления по началу и циклу', active: 'Активна', autoRenew: 'Автопродление', autoRenewTip: 'В дату продления обновляет дату в локальной записи. Сервис не выполняет платежи у провайдера.',
+    remindDays: 'Напомнить за (дней)', reminderRules: 'Правила напоминаний', reminderRulesHint: 'Настройте однократные напоминания до, в день и после срока по дням или часам.', applyPreset: '7 / 3 / 1 / день срока', addRule: 'Добавить правило', enabled: 'Включено', beforeDue: 'До срока', onDue: 'В день срока', afterDue: 'После срока', days: 'дней', hours: 'часов', removeRule: 'Удалить правило', afterAutoHint: 'Правила после срока не выполняются при автопродлении.', calcNextTip: 'Рассчитать дату продления по началу и циклу', active: 'Активна', autoRenew: 'Автопродление', autoRenewTip: 'В дату продления обновляет дату в локальной записи. Сервис не выполняет платежи у провайдера.',
     icon: 'Иконка', save: 'Сохранить', cancel: 'Отмена', delete: 'Удалить', renew: 'Продлить', confirmDelete: 'Удалить подписку?',
     uploadIcon: 'Загрузить иконку', filterAll: 'Все', filterRecurring: 'Регулярные', filterOneTime: 'Разовые',
     plan: 'Тариф', planPh: 'напр. Premium / Pro',
     secService: 'Сервис', secPrice: 'Цена', secBilling: 'Биллинг', secClassify: 'Категория и оплата',
     secFamily: 'Семейный доступ', secBundle: 'Пакет', secExtra: 'Доп.', secCalendar: 'Календарь',
-    iconLibrary: 'Библиотека иконок', iconUrl: 'URL иконки', iconUrlImport: 'Импорт', nameSuggest: 'Популярные сервисы',
+    iconLibrary: 'Библиотека иконок', iconUrl: 'URL иконки', iconUrlImport: 'Импорт', iconSearchPh: 'Поиск по имени или домену', iconSearchEmpty: 'Подходящих иконок нет', nameSuggest: 'Популярные сервисы',
     family: 'Участники', familyAdd: 'Добавить', familyPh: 'Имя участника',
     bundleNone: 'Без пакета', bundleJoin: 'В существующий пакет', bundleCreate: 'Создать пакет', bundleName: 'Название пакета',
     showInCalendar: 'Показывать в календаре', website: 'Сайт',
@@ -495,6 +497,7 @@ const ru = {
     remark: 'Заметка', remarkPh: 'напр. основной сервер / HK CN2 (на карточке)',
     ipLabel: 'IP-адрес (необязательно)', ipv4: 'IPv4', ipv6: 'IPv6'
   },
+  icons: { title: 'Библиотека иконок', add: 'Добавить иконку', addTitle: 'Добавить иконку', editTitle: 'Изменить иконку', searchPh: 'Поиск по имени, домену или категории', all: 'Все', global: 'Общие', personal: 'Мои', name: 'Название', domain: 'Домен', category: 'Категория', iconUrl: 'URL иконки', upload: 'Загрузить', enabled: 'Включено', globalNew: 'Добавить в общую библиотеку', edit: 'Изменить', delete: 'Удалить', deleteConfirm: 'Удалить иконку «{name}»?', saved: 'Сохранено', disabled: 'Отключено', empty: 'Иконок пока нет' },
   calendar: { title: 'Календарь продлений', noEvents: 'Нет продлений', today: 'Сегодня', more: '+{n} ещё' },
   reports: {
     title: 'Отчёты', overview: 'Обзор', insights: 'Аналитика', categoryDetail: 'По категориям', recentPayments: 'Платежи',
@@ -541,7 +544,7 @@ const ru = {
     title: 'Напоминания и бюджет', budget: 'Месячный бюджет', budgetPh: '0 или пусто = без лимита',
     quietStart: 'Тихо с', quietEnd: 'Тихо до',
     quietHint: 'В тихие часы откладываются только несрочные напоминания; на сегодня/завтра — отправляются.',
-    digest: 'Еженедельная сводка', over: 'Превышен бюджет', budgetLeft: 'Остаток бюджета'
+    digest: 'Еженедельная сводка', scanTime: 'Время сканирования напоминаний', scanTimeTip: 'Применяется ко всему сайту и сразу меняет расписание задач.', over: 'Превышен бюджет', budgetLeft: 'Остаток бюджета'
   },
   wk: { mon: 'Пн', tue: 'Вт', wed: 'Ср', thu: 'Чт', fri: 'Пт', sat: 'Сб', sun: 'Вс' },
   sec: {
