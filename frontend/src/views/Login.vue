@@ -9,7 +9,7 @@
       <template v-if="step === 'form'">
         <div class="seg">
           <button :class="{ on: mode === 'login' }" @click="mode = 'login'">{{ t('auth.login') }}</button>
-          <button :class="{ on: mode === 'register' }" @click="mode = 'register'">{{ t('auth.register') }}</button>
+          <button v-if="registrationEnabled" :class="{ on: mode === 'register' }" @click="mode = 'register'">{{ t('auth.register') }}</button>
         </div>
 
         <label>{{ t('auth.username') }}</label>
@@ -93,9 +93,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import api from '../api'
 import { useAuth } from '../stores/auth'
 
 const { t, locale } = useI18n()
@@ -113,6 +114,7 @@ const need2fa = ref(false)
 const error = ref('')
 const info = ref('')
 const busy = ref(false)
+const registrationEnabled = ref(true)
 
 function setLang(l) {
   locale.value = l
@@ -194,6 +196,14 @@ async function doVerify() {
     busy.value = false
   }
 }
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get('/api/system/registration')
+    registrationEnabled.value = data.registration_enabled !== false
+    if (!registrationEnabled.value) mode.value = 'login'
+  } catch { /* 注册接口仍会在服务端执行最终校验 */ }
+})
 </script>
 
 <style scoped>

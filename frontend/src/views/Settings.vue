@@ -130,6 +130,20 @@
       <p v-if="calMsg" class="ok">{{ calMsg }}</p>
     </div>
 
+    <!-- 管理员：注册策略 -->
+    <div class="card sect" v-if="auth.user?.is_admin">
+      <h3>🛡️ {{ t('admin.registrationSettings') }}</h3>
+      <p class="muted" style="font-size:13px;margin-top:0">{{ t('admin.registrationTip') }}</p>
+      <div class="admin-switches">
+        <label class="switch"><input type="checkbox" v-model="registration.registration_enabled" />
+          <span>{{ t('admin.registrationEnabled') }}</span></label>
+        <label class="switch"><input type="checkbox" v-model="registration.require_admin_approval" />
+          <span>{{ t('admin.requireApproval') }}</span></label>
+      </div>
+      <button class="btn ghost sm" style="margin-top:12px" :disabled="registrationSaving" @click="saveRegistrationSettings">{{ t('settings.save') }}</button>
+      <p v-if="registrationMsg" :class="registrationOk ? 'ok' : 'err'">{{ registrationMsg }}</p>
+    </div>
+
     <!-- 管理员：整站备份与恢复 -->
     <div class="card sect" v-if="auth.user?.is_admin">
       <h3>🗄️ {{ t('backupAll.title') }}</h3>
@@ -330,6 +344,10 @@ const reminderScanTime = ref('')
 const scanTimeMsg = ref('')
 const scanTimeOk = ref(false)
 const scanTimeSaving = ref(false)
+const registration = reactive({ registration_enabled: true, require_admin_approval: true })
+const registrationMsg = ref('')
+const registrationOk = ref(false)
+const registrationSaving = ref(false)
 const weekdays = computed(() => [
   t('wk.mon'), t('wk.tue'), t('wk.wed'), t('wk.thu'), t('wk.fri'), t('wk.sat'), t('wk.sun')
 ])
@@ -358,6 +376,30 @@ async function saveReminderScanTime() {
     scanTimeMsg.value = e.response?.data?.detail || 'Error'
   } finally {
     scanTimeSaving.value = false
+  }
+}
+
+async function loadRegistrationSettings() {
+  try {
+    const { data } = await api.get('/api/system/registration-settings')
+    registration.registration_enabled = data.registration_enabled
+    registration.require_admin_approval = data.require_admin_approval
+  } catch { /* 管理员接口不可用时保持默认值 */ }
+}
+async function saveRegistrationSettings() {
+  registrationMsg.value = ''
+  registrationSaving.value = true
+  try {
+    const { data } = await api.put('/api/system/registration-settings', registration)
+    registration.registration_enabled = data.registration_enabled
+    registration.require_admin_approval = data.require_admin_approval
+    registrationOk.value = true
+    registrationMsg.value = t('settings.saved')
+  } catch (e) {
+    registrationOk.value = false
+    registrationMsg.value = e.response?.data?.detail || 'Error'
+  } finally {
+    registrationSaving.value = false
   }
 }
 
@@ -523,7 +565,10 @@ onMounted(async () => {
   loadRates()
   loadTokens()
   checkUpdate()
-  if (auth.user?.is_admin) loadAutoBackups()
+  if (auth.user?.is_admin) {
+    loadAutoBackups()
+    loadRegistrationSettings()
+  }
 })
 </script>
 
@@ -552,6 +597,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .switch { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-soft); cursor: pointer; width: auto; margin: 0; }
 .switch input { width: auto; }
 .scan-time-setting { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.admin-switches { display: flex; flex-wrap: wrap; gap: 16px; }
 .theme-picker { display: flex; gap: 10px; margin: 6px 0 4px; }
 .th { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; padding: 0; }
 .th.on { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }

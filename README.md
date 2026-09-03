@@ -85,6 +85,18 @@ vi Caddyfile                  # 可选：把 your-domain.com 改成你的域名
 docker compose up -d --build
 ```
 
+### 服务器快捷管理面板
+
+使用源码部署时，可以安装交互式 `easysub` 命令，快速查看状态、备份、拉取最新代码重建应用、查看日志、重启或回滚。更新只替换 `easysub` 应用容器，会复用原来的端口、网络、环境变量和 `/app/data` 数据卷；MySQL 容器和数据不会被删除。
+
+```bash
+cd ~/easysub-custom
+bash scripts/install-easysub-command.sh
+easysub
+```
+
+默认源码目录是 `~/easysub-custom`，也可以通过 `EASYSUB_DIR=/path/to/EasySub easysub` 指定其他目录。执行更新前请先提交本地代码修改，并建议先在菜单中执行一次备份。脚本不会执行 `docker compose down -v`。
+
 ### 🖥️ NAS 部署
 
 群晖 Synology / 威联通 QNAP / 飞牛 fnOS / Unraid / TrueNAS 的图形界面分步教程，详见

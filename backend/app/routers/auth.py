@@ -23,6 +23,11 @@ from app.security import (
     verify_password,
 )
 from app.services import email as email_svc
+from app.services.system_settings import (
+    REGISTRATION_ENABLED_KEY,
+    REQUIRE_ADMIN_APPROVAL_KEY,
+    get_bool,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -66,8 +71,13 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
         raise HTTPException(400, "邮箱已被使用")
 
     is_first = db.scalar(select(User).limit(1)) is None
+    if not is_first and not get_bool(db, REGISTRATION_ENABLED_KEY, True):
+        raise HTTPException(403, "管理员已关闭新用户注册")
+
     need_email = email_svc.smtp_configured() and not is_first
-    need_approval = settings.require_admin_approval and not is_first
+    need_approval = (
+        get_bool(db, REQUIRE_ADMIN_APPROVAL_KEY, settings.require_admin_approval) and not is_first
+    )
 
     user = User(
         username=payload.username,

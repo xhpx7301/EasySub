@@ -109,6 +109,11 @@ class ReminderScanTimeIn(BaseModel):
     reminder_scan_time: str
 
 
+class RegistrationSettingsIn(BaseModel):
+    registration_enabled: bool
+    require_admin_approval: bool
+
+
 # ---------- Subscription ----------
 class SubscriptionIn(BaseModel):
     name: str

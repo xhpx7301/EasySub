@@ -77,7 +77,9 @@ const zh = {
     enable: '启用', disable: '禁用', resetPwd: '重置密码', resetPwdPrompt: '输入新密码：',
     confirmDelete: '确认删除该用户及其全部数据？', create: '创建', cancel: '取消',
     approved: '已通过', pending: '待审核', approve: '通过审核', emailUnverified: '邮箱未验证',
-    pendingTab: '待审核 ({n})', allTab: '全部用户', noPending: '没有待审核的用户'
+    pendingTab: '待审核 ({n})', allTab: '全部用户', noPending: '没有待审核的用户',
+    registrationSettings: '注册设置', registrationTip: '关闭后，登录页将不再显示注册入口；首位管理员账号不受此设置影响。',
+    registrationEnabled: '允许新用户注册', requireApproval: '注册后需管理员审核'
   },
   auth: {
     login: '登录', register: '注册', username: '用户名', email: '邮箱', password: '密码',
@@ -264,7 +266,9 @@ const en = {
     enable: 'Enable', disable: 'Disable', resetPwd: 'Reset password', resetPwdPrompt: 'New password:',
     confirmDelete: 'Delete this user and all their data?', create: 'Create', cancel: 'Cancel',
     approved: 'Approved', pending: 'Pending', approve: 'Approve', emailUnverified: 'Email not verified',
-    pendingTab: 'Pending ({n})', allTab: 'All users', noPending: 'No users awaiting approval'
+    pendingTab: 'Pending ({n})', allTab: 'All users', noPending: 'No users awaiting approval',
+    registrationSettings: 'Registration settings', registrationTip: 'When closed, the sign-up tab is hidden. The first administrator account is never blocked.',
+    registrationEnabled: 'Allow new user registration', requireApproval: 'Require administrator approval after registration'
   },
   auth: {
     login: 'Login', register: 'Register', username: 'Username', email: 'Email', password: 'Password',
@@ -451,7 +455,9 @@ const ru = {
     enable: 'Включить', disable: 'Отключить', resetPwd: 'Сбросить пароль', resetPwdPrompt: 'Новый пароль:',
     confirmDelete: 'Удалить пользователя и все его данные?', create: 'Создать', cancel: 'Отмена',
     approved: 'Одобрен', pending: 'Ожидает', approve: 'Одобрить', emailUnverified: 'Почта не подтверждена',
-    pendingTab: 'Ожидают ({n})', allTab: 'Все', noPending: 'Нет ожидающих одобрения'
+    pendingTab: 'Ожидают ({n})', allTab: 'Все', noPending: 'Нет ожидающих одобрения',
+    registrationSettings: 'Настройки регистрации', registrationTip: 'После отключения вкладка регистрации скрывается. Первый аккаунт администратора не блокируется.',
+    registrationEnabled: 'Разрешить регистрацию новых пользователей', requireApproval: 'Требовать одобрение администратора после регистрации'
   },
   auth: {
     login: 'Вход', register: 'Регистрация', username: 'Логин', email: 'Эл. почта', password: 'Пароль',

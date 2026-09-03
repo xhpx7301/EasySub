@@ -12,14 +12,29 @@ from app.config import settings
 from app.database import get_db
 from app.deps import get_admin_user, get_current_user
 from app.models import Subscription, SystemSetting, User
-from app.schemas import ReminderScanTimeIn
+from app.schemas import RegistrationSettingsIn, ReminderScanTimeIn
 from app.services import scheduler
+from app.services.system_settings import (
+    REGISTRATION_ENABLED_KEY,
+    REQUIRE_ADMIN_APPROVAL_KEY,
+    get_bool,
+    set_bool,
+)
 
 router = APIRouter(prefix="/api/system", tags=["system"])
 
 APP_VERSION = "1.11.2"
 GITHUB_REPO = "suyijun8182/easysub"
 _REMINDER_SCAN_TIME_KEY = "reminder_scan_time"
+
+
+def _registration_settings(db: Session) -> dict[str, bool]:
+    return {
+        "registration_enabled": get_bool(db, REGISTRATION_ENABLED_KEY, True),
+        "require_admin_approval": get_bool(
+            db, REQUIRE_ADMIN_APPROVAL_KEY, settings.require_admin_approval
+        ),
+    }
 
 # 版本检查结果缓存（避免频繁请求 GitHub，未认证限流 60 次/小时）
 _ver_cache: dict = {"at": 0.0, "data": None}
@@ -119,3 +134,35 @@ def update_reminder_scan_time(
     scheduler.reschedule_reminder_scans(value)
     activity.log("system.reminder_scan_time", f"提醒扫描时间更新为 {value}", user=user)
     return {"reminder_scan_time": value}
+
+
+@router.get("/registration")
+def registration_status(db: Session = Depends(get_db)):
+    """Public status used by the login screen; registration is still enforced by auth."""
+    return {"registration_enabled": _registration_settings(db)["registration_enabled"]}
+
+
+@router.get("/registration-settings")
+def get_registration_settings(
+    user: User = Depends(get_admin_user), db: Session = Depends(get_db)
+):
+    return _registration_settings(db)
+
+
+@router.put("/registration-settings")
+def update_registration_settings(
+    payload: RegistrationSettingsIn,
+    user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    set_bool(db, REGISTRATION_ENABLED_KEY, payload.registration_enabled)
+    set_bool(db, REQUIRE_ADMIN_APPROVAL_KEY, payload.require_admin_approval)
+    db.commit()
+    activity.log(
+        "system.registration_settings",
+        "注册设置已更新："
+        f"允许注册={'是' if payload.registration_enabled else '否'}，"
+        f"需审核={'是' if payload.require_admin_approval else '否'}",
+        user=user,
+    )
+    return _registration_settings(db)
