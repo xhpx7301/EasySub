@@ -1,0 +1,80 @@
+name: Build and Publish Docker image
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    # 默认 GITHUB_TOKEN 没有 packages 写权限，推送到 GHCR 会被拒（denied），
+    # 导致 Build and push 步骤失败。这里显式授予 packages:write。
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            suyijun8182/easysub:latest
+            suyijun8182/easysub:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/easysub:latest
+            ghcr.io/${{ github.repository_owner }}/easysub:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 把 DOCKERHUB.md 同步到 Docker Hub 仓库的 Overview（full_description）。
+      # 只在 main 推送时跑（tag 推送内容相同，避免重复请求）；失败不影响镜像发布，故 continue-on-error。
+      # 逻辑内联在此，不引用本地维护脚本 update-dockerhub-overview.sh（该脚本按 .gitignore 不入库）。
+      - name: Sync Docker Hub overview (DOCKERHUB.md)
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_REPO: suyijun8182/easysub
+          DOCKERHUB_SHORT: "Self-hosted subscription & renewal manager, 14 notify channels. 自托管订阅续费保号管理."
+        run: |
+          set -euo pipefail
+          JWT=$(curl -s -H "Content-Type: application/json" \
+            -d "$(jq -n --arg u "$DOCKERHUB_USERNAME" --arg p "$DOCKERHUB_TOKEN" '{username:$u,password:$p}')" \
+            https://hub.docker.com/v2/users/login/ | jq -r .token)
+          [ -n "$JWT" ] && [ "$JWT" != "null" ] || { echo "Docker Hub 登录失败：检查 DOCKERHUB_USERNAME / DOCKERHUB_TOKEN"; exit 1; }
+          BODY=$(jq -n --arg full "$(cat DOCKERHUB.md)" --arg short "$DOCKERHUB_SHORT" \
+            '{full_description:$full, description:$short}')
+          CODE=$(curl -s -o /tmp/dh_resp.json -w '%{http_code}' -X PATCH \
+            -H "Authorization: JWT $JWT" -H "Content-Type: application/json" \
+            -d "$BODY" "https://hub.docker.com/v2/repositories/$DOCKERHUB_REPO/")
+          if [ "$CODE" = "200" ]; then
+            echo "✅ Overview 已同步：https://hub.docker.com/r/$DOCKERHUB_REPO"
+          else
+            echo "❌ 同步失败（HTTP $CODE）："; cat /tmp/dh_resp.json; exit 1
+          fi
