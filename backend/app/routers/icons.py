@@ -3,7 +3,7 @@ import re
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import or_, select
@@ -54,8 +54,13 @@ def _item_out(item: IconLibraryItem, user: User | None = None) -> dict:
 
 
 @router.post("/upload")
-async def upload_icon(file: UploadFile = File(...), user: User = Depends(get_current_user)):
-    """用户上传本地图标。"""
+async def upload_icon(
+    file: UploadFile = File(...),
+    library_name: str | None = Form(default=None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """用户上传本地图标；传入名称时同时保存到个人图标库。"""
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED:
         raise HTTPException(400, f"不支持的图标格式：{ext}")
@@ -66,7 +71,26 @@ async def upload_icon(file: UploadFile = File(...), user: User = Depends(get_cur
     name = re.sub(r"[^A-Za-z0-9_.\-]", "", f"{user.id}_{uuid.uuid4().hex}{ext}")
     with open(os.path.join(UPLOAD_DIR, name), "wb") as f:
         f.write(data)
-    return {"url": f"/static/icons/{name}"}
+    url = f"/static/icons/{name}"
+
+    # 订阅页会传入服务名称，让上传的图标立刻成为可复用、可编辑的个人图标。
+    item = None
+    display_name = (library_name or "").strip()
+    if display_name:
+        item = IconLibraryItem(
+            user_id=user.id,
+            slug=f"custom-{user.id}-{uuid.uuid4().hex}",
+            name=display_name[:128],
+            category="other",
+            icon_url=url,
+            is_builtin=False,
+            is_enabled=True,
+        )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+        activity.log("icon.create", f"新增个人图标「{item.name}」", user=user)
+    return {"url": url, "item": _item_out(item, user) if item else None}
 
 
 @router.post("/from-url")

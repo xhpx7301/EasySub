@@ -71,9 +71,9 @@ const navItems = computed(() => {
   const base = [
     { to: '/dashboard', key: 'dashboard', label: 'nav.dashboard' },
     { to: '/subscriptions', key: 'subscriptions', label: 'nav.subscriptions' },
-    { to: '/icons', key: 'icons', label: 'nav.icons' },
     { to: '/calendar', key: 'calendar', label: 'nav.calendar' },
     { to: '/reports', key: 'reports', label: 'nav.reports' },
+    { to: '/icons', key: 'icons', label: 'nav.icons' },
     { to: '/notifications', key: 'notifications', label: 'nav.notifications' },
     { to: '/logs', key: 'logs', label: 'nav.logs' },
     { to: '/settings', key: 'settings', label: 'nav.settings' }

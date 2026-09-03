@@ -7,10 +7,10 @@
 
     <div class="bar">
       <input v-model="search" class="search-box" :placeholder="t('icons.searchPh')" />
-      <div class="seg">
-        <button :class="{ on: scope === 'all' }" @click="scope = 'all'">{{ t('icons.all') }}</button>
-        <button :class="{ on: scope === 'global' }" @click="scope = 'global'">{{ t('icons.global') }}</button>
-        <button :class="{ on: scope === 'personal' }" @click="scope = 'personal'">{{ t('icons.personal') }}</button>
+      <div class="scope-tabs" role="group" :aria-label="t('icons.title')">
+        <button class="scope-tab" :class="{ on: scope === 'all' }" :aria-pressed="scope === 'all'" @click="scope = 'all'">{{ t('icons.all') }}</button>
+        <button class="scope-tab" :class="{ on: scope === 'global' }" :aria-pressed="scope === 'global'" @click="scope = 'global'">{{ t('icons.global') }}</button>
+        <button class="scope-tab" :class="{ on: scope === 'personal' }" :aria-pressed="scope === 'personal'" @click="scope = 'personal'">{{ t('icons.personal') }}</button>
       </div>
     </div>
 
@@ -162,6 +162,14 @@ onMounted(load)
 </script>
 
 <style scoped>
+.head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.head h1 { margin: 0; }
+.bar { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: center; gap: 12px; margin-bottom: 16px; }
+.search-box { width: 100%; min-width: 0; }
+.scope-tabs { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.scope-tab { min-width: 58px; border: 0; border-radius: 7px; padding: 7px 11px; background: transparent; color: var(--text-soft); font: inherit; font-size: 13px; font-weight: 600; line-height: 1.2; cursor: pointer; transition: background .15s ease, color .15s ease, box-shadow .15s ease; }
+.scope-tab:hover { color: var(--primary); background: var(--primary-soft); }
+.scope-tab.on { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; box-shadow: 0 2px 7px color-mix(in srgb, var(--primary) 32%, transparent); }
 .icon-management-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .icon-item { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .icon-item.disabled { opacity: .58; }
@@ -181,5 +189,12 @@ onMounted(load)
 .switch input { width: auto; }
 .err { color: var(--danger); font-size: 13px; margin: 8px 0 0; }
 .ok { color: var(--success); font-size: 13px; }
-@media (max-width: 600px) { .icon-management-grid { grid-template-columns: 1fr; } .icon-item-actions { flex-direction: column; } }
+@media (max-width: 600px) {
+  .head { align-items: flex-start; flex-direction: column; }
+  .bar { grid-template-columns: 1fr; }
+  .scope-tabs { width: 100%; }
+  .scope-tab { flex: 1; }
+  .icon-management-grid { grid-template-columns: 1fr; }
+  .icon-item-actions { flex-direction: column; }
+}
 </style>

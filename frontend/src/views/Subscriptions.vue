@@ -793,10 +793,23 @@ async function importIconUrl() {
 async function uploadIcon(e) {
   const file = e.target.files[0]
   if (!file) return
-  const fd = new FormData()
-  fd.append('file', file)
-  const { data } = await api.post('/api/icons/upload', fd)
-  form.value.icon = data.url
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    // 订阅上传的图标同时写入当前用户的图标库，名称默认取订阅名称。
+    const defaultName = (form.value.name || '').trim() || file.name.replace(/\.[^.]+$/, '')
+    fd.append('library_name', defaultName)
+    const { data } = await api.post('/api/icons/upload', fd)
+    form.value.icon = data.url
+    if (data.item) {
+      iconLib.value.push(data.item)
+      toast(t('sub.iconSavedToLibrary'))
+    }
+  } catch (err) {
+    formErr.value = err.response?.data?.detail || 'Error'
+  } finally {
+    e.target.value = ''
+  }
 }
 
 async function exportCsv() {
