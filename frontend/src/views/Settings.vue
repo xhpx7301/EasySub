@@ -86,6 +86,7 @@
       <p class="muted" style="font-size:12px;margin:6px 0 0">{{ t('remind.quietHint') }}</p>
       <div class="row" style="align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap">
         <label class="switch"><input type="checkbox" v-model="prefs.digest_enabled" /> <span>{{ t('remind.digest') }}</span></label>
+        <label class="switch"><input type="checkbox" v-model="prefs.renewal_notice_enabled" /> <span>{{ t('remind.renewalNotice') }}</span></label>
         <select v-if="prefs.digest_enabled" v-model.number="prefs.digest_weekday" style="width:auto">
           <option v-for="(d, i) in weekdays" :key="i" :value="i">{{ d }}</option>
         </select>
@@ -299,7 +300,8 @@ const prefs = reactive({
   quiet_start: ns.quiet_start || '',
   quiet_end: ns.quiet_end || '',
   digest_enabled: !!ns.digest_enabled,
-  digest_weekday: ns.digest_weekday ?? 0
+  digest_weekday: ns.digest_weekday ?? 0,
+  renewal_notice_enabled: ns.renewal_notice_enabled !== false
 })
 const twofa = reactive({ qr: '', secret: '', code: '' })
 const secMsg = ref('')
@@ -356,7 +358,8 @@ async function savePrefs() {
     monthly_budget: prefs.monthly_budget || null,
     notify_settings: {
       quiet_start: prefs.quiet_start || null, quiet_end: prefs.quiet_end || null,
-      digest_enabled: prefs.digest_enabled, digest_weekday: prefs.digest_weekday
+      digest_enabled: prefs.digest_enabled, digest_weekday: prefs.digest_weekday,
+      renewal_notice_enabled: prefs.renewal_notice_enabled
     }
   })
   prefsMsg.value = t('settings.saved')

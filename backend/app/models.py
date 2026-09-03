@@ -57,7 +57,7 @@ class User(Base):
 
     # 月度预算（基准货币）；超支时仪表盘预警
     monthly_budget: Mapped[float | None] = mapped_column(Float, nullable=True)
-    # 通知相关设置：免打扰时段、每周汇总等（{quiet_start,quiet_end,digest_enabled,digest_weekday}）
+    # 通知相关设置：免打扰、每周汇总、续费结果通知等
     notify_settings: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # 两步验证（TOTP）

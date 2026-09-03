@@ -593,6 +593,33 @@ def in_quiet_hours(user) -> bool:
     return now >= q1 or now < q2  # 跨午夜窗口
 
 
+def dispatch_renewal_notice(user, name: str, renewed_on, next_due,
+                            mode: str = "today", automatic: bool = False) -> list[dict]:
+    """发送续费结果通知。通知开关默认开启，失败不会影响续费事务。"""
+    st = getattr(user, "notify_settings", None) or {}
+    if st.get("renewal_notice_enabled", True) is False:
+        return []
+    title = "自动续费账期已顺延" if automatic else "续费成功"
+    method = "自动顺延" if automatic else ("保号 / 提前续费" if mode == "today" else "常规循环")
+    body = (
+        f"✅ {title}\n\n"
+        f"项目：{name}\n"
+        f"处理日期：{renewed_on}\n"
+        f"方式：{method}\n"
+        f"下次到期：{next_due}"
+    )
+    # Telegram 使用 Markdown，转义名称中的控制字符；其他渠道仍使用纯文本。
+    md_name = re.sub(r"([_*`\[])", r"\\\1", str(name))
+    body_md = (
+        f"✅ {title}\n\n"
+        f"项目：{md_name}\n"
+        f"处理日期：{renewed_on}\n"
+        f"方式：{method}\n"
+        f"下次到期：{next_due}"
+    )
+    return dispatch(user, title, body, text_md=body_md, event="renewal")
+
+
 def dispatch(user, subject: str, text_plain: str, text_md: str | None = None,
              event: str = "reminder") -> list[dict]:
     """向该用户所有已启用渠道推送。返回每个渠道的结果列表。"""

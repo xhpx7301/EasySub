@@ -172,7 +172,7 @@ const zh = {
     title: '提醒与预算', budget: '月度预算', budgetPh: '0 或留空 = 不限',
     quietStart: '免打扰开始', quietEnd: '免打扰结束',
     quietHint: '免打扰时段内仅暂缓非紧急提醒；到期当天/次日的提醒仍会照常发送。',
-    digest: '每周汇总推送', scanTime: '提醒扫描时间', scanTimeTip: '全站统一生效，保存后立即重排定时任务。', over: '已超预算', budgetLeft: '预算剩余'
+    digest: '每周汇总推送', renewalNotice: '续费成功 / 自动顺延通知', scanTime: '提醒扫描时间', scanTimeTip: '全站统一生效，保存后立即重排定时任务。', over: '已超预算', budgetLeft: '预算剩余'
   },
   wk: { mon: '周一', tue: '周二', wed: '周三', thu: '周四', fri: '周五', sat: '周六', sun: '周日' },
   sec: {
@@ -361,7 +361,7 @@ const en = {
     title: 'Reminders & budget', budget: 'Monthly budget', budgetPh: '0 or empty = no limit',
     quietStart: 'Quiet from', quietEnd: 'Quiet to',
     quietHint: 'Quiet hours only defer non-urgent reminders; due-today/tomorrow reminders still send.',
-    digest: 'Weekly digest', scanTime: 'Reminder scan time', scanTimeTip: 'Applies to the whole site and reschedules tasks immediately after saving.', over: 'Over budget', budgetLeft: 'Budget left'
+    digest: 'Weekly digest', renewalNotice: 'Renewal success / auto-advance notice', scanTime: 'Reminder scan time', scanTimeTip: 'Applies to the whole site and reschedules tasks immediately after saving.', over: 'Over budget', budgetLeft: 'Budget left'
   },
   wk: { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' },
   sec: {
@@ -550,7 +550,7 @@ const ru = {
     title: 'Напоминания и бюджет', budget: 'Месячный бюджет', budgetPh: '0 или пусто = без лимита',
     quietStart: 'Тихо с', quietEnd: 'Тихо до',
     quietHint: 'В тихие часы откладываются только несрочные напоминания; на сегодня/завтра — отправляются.',
-    digest: 'Еженедельная сводка', scanTime: 'Время сканирования напоминаний', scanTimeTip: 'Применяется ко всему сайту и сразу меняет расписание задач.', over: 'Превышен бюджет', budgetLeft: 'Остаток бюджета'
+    digest: 'Еженедельная сводка', renewalNotice: 'Уведомления о продлении', scanTime: 'Время сканирования напоминаний', scanTimeTip: 'Применяется ко всему сайту и сразу меняет расписание задач.', over: 'Превышен бюджет', budgetLeft: 'Остаток бюджета'
   },
   wk: { mon: 'Пн', tue: 'Вт', wed: 'Ср', thu: 'Чт', fri: 'Пт', sat: 'Сб', sun: 'Вс' },
   sec: {

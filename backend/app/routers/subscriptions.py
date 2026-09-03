@@ -15,7 +15,7 @@ from app.deps import get_current_user
 from app.models import Category, Subscription, User
 from app.schemas import SubscriptionIn, SubscriptionOut, SubscriptionUpdate
 from app.security import verify_password
-from app.services import exchange
+from app.services import exchange, notify
 
 router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
@@ -244,6 +244,17 @@ def renew_sub(
         f"续费「{sub.name}」（{mode}），下次到期 {sub.next_renewal_date}",
         user=user,
     )
+    # 事务已提交后再发送，通知失败不会回滚续费结果。
+    results = notify.dispatch_renewal_notice(
+        user, sub.name, today, sub.next_renewal_date, mode=mode
+    )
+    failed = [r for r in results if not r.get("ok")]
+    if failed:
+        activity.log(
+            "notify.renewal",
+            f"续费成功通知发送失败：{'; '.join(r.get('error', '') for r in failed)}",
+            user=user, level="warn",
+        )
     return _to_out(db, sub, user.base_currency)
 
 

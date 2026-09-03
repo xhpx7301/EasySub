@@ -188,7 +188,7 @@ def run_auto_renewals(today: date | None = None) -> dict:
         return {"renewed": 0, "skipped": "数据库未配置"}
 
     today = today or date.today()
-    renewed: list[tuple[str, date, date, int, str]] = []
+    renewed: list[tuple[str, date, date, int, str, object]] = []
     db = database.SessionLocal()
     try:
         subs = db.scalars(
@@ -215,7 +215,15 @@ def run_auto_renewals(today: date | None = None) -> dict:
             sub.next_renewal_date = next_due
             user = db.get(User, sub.user_id)
             if user:
-                renewed.append((sub.name, old_due, next_due, user.id, user.username))
+                # 保存通知配置快照，数据库会话在发送前关闭。
+                renewed.append((
+                    sub.name, old_due, next_due, user.id, user.username,
+                    SimpleNamespace(
+                        id=user.id, username=user.username,
+                        notify_config=notify.load_config(user),
+                        notify_settings=dict(user.notify_settings or {}),
+                    ),
+                ))
         db.commit()
     except Exception:
         db.rollback()
@@ -224,12 +232,22 @@ def run_auto_renewals(today: date | None = None) -> dict:
         db.close()
 
     # 自动续费是账期记录更新，不伪造实际付款日期；单独写活动日志以便审计。
-    for name, old_due, next_due, user_id, username in renewed:
+    for name, old_due, next_due, user_id, username, user in renewed:
         activity.log(
             "subscription.auto_renew",
             f"自动续费记录「{name}」：下次续费 {old_due} -> {next_due}",
             user=SimpleNamespace(id=user_id, username=username),
         )
+        results = notify.dispatch_renewal_notice(
+            user, name, today, next_due, automatic=True
+        )
+        failed = [r for r in results if not r.get("ok")]
+        if failed:
+            activity.log(
+                "notify.renewal",
+                f"自动续费通知发送失败：{'; '.join(r.get('error', '') for r in failed)}",
+                user=SimpleNamespace(id=user_id, username=username), level="warn",
+            )
     return {"renewed": len(renewed)}
 
 
