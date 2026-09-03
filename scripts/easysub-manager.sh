@@ -59,8 +59,20 @@ discover_container() {
     return 1
   fi
 
-  mapfile -t NETWORKS < <(docker inspect -f '{{range $key, $_ := .NetworkSettings.Networks}}{{println $key}}{{end}}' "$APP_NAME")
-  mapfile -t PORT_LINES < <(docker inspect -f '{{range $port, $bindings := .HostConfig.PortBindings}}{{range $bindings}}{{printf "%s\t%s\t%s\n" $port .HostIp .HostPort}}{{end}}{{end}}' "$APP_NAME")
+  # Docker writes a trailing newline even when the old container has no published
+  # ports. Filter empty records so a reverse-proxy deployment never receives `-p :`.
+  NETWORKS=()
+  local network
+  while IFS= read -r network; do
+    [[ -n "$network" ]] && NETWORKS+=("$network")
+  done < <(docker inspect -f '{{range $key, $_ := .NetworkSettings.Networks}}{{println $key}}{{end}}' "$APP_NAME")
+
+  PORT_LINES=()
+  local container_port host_ip host_port
+  while IFS=$'\t' read -r container_port host_ip host_port; do
+    [[ -n "$container_port" && -n "$host_port" ]] || continue
+    PORT_LINES+=("$container_port"$'\t'"$host_ip"$'\t'"$host_port")
+  done < <(docker inspect -f '{{range $port, $bindings := .HostConfig.PortBindings}}{{range $bindings}}{{printf "%s\t%s\t%s\n" $port .HostIp .HostPort}}{{end}}{{end}}' "$APP_NAME")
 
   mkdir -p "$(dirname "$ENV_FILE")" || return 1
   docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$APP_NAME" > "$ENV_FILE" || return 1
@@ -157,7 +169,8 @@ start_replacement() {
   args+=(-v "$DATA_VOLUME_SPEC")
   for line in "${PORT_LINES[@]}"; do
     IFS=$'\t' read -r container_port host_ip host_port <<< "$line"
-    container_port="${container_port%/*}"
+    # Defense in depth: never emit a malformed `docker run -p` argument.
+    [[ -n "$container_port" && -n "$host_port" ]] || continue
     if [[ -z "$host_ip" || "$host_ip" == "0.0.0.0" ]]; then
       args+=(-p "$host_port:$container_port")
     elif [[ "$host_ip" == "::" ]]; then
