@@ -73,7 +73,7 @@
       <div class="card sect">
         <h3>🏆 {{ t('reports.ranking') }}</h3>
         <div class="table-wrap">
-          <table>
+          <table class="ins-table ins-4">
             <thead><tr><th>#</th><th>{{ t('sub.name') }}</th><th>{{ t('reports.category') }}</th><th>{{ t('reports.monthly') }}</th></tr></thead>
             <tbody>
               <tr v-for="(s, i) in ranking" :key="s.id">
@@ -92,7 +92,7 @@
         <div class="card sect">
           <h3>⏰ {{ t('reports.upcoming') }}</h3>
           <div class="table-wrap">
-            <table>
+            <table class="ins-table ins-3">
               <tbody>
                 <tr v-for="s in upcoming" :key="s.id">
                   <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i class="nm-sub">{{ s.plan ? s.plan + ' · ' : '' }}{{ catName(s.category_id) }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
@@ -107,7 +107,7 @@
         <div class="card sect">
           <h3>⚠️ {{ t('reports.expired') }}</h3>
           <div class="table-wrap">
-            <table>
+            <table class="ins-table ins-3">
               <tbody>
                 <tr v-for="s in expired" :key="s.id">
                   <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i class="nm-sub">{{ s.plan ? s.plan + ' · ' : '' }}{{ catName(s.category_id) }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
@@ -124,7 +124,7 @@
       <div class="card sect">
         <h3>♾️ {{ t('reports.oneTime') }}</h3>
         <div class="table-wrap">
-          <table>
+          <table class="ins-table ins-ot">
             <thead><tr><th>{{ t('sub.name') }}</th><th>{{ t('reports.category') }}</th><th>{{ t('sub.amount') }}</th><th>{{ t('sub.startDate') }}</th></tr></thead>
             <tbody>
               <tr v-for="s in oneTime" :key="s.id">
@@ -380,7 +380,34 @@ h1 { margin-top: 0; }
   .legend { min-width: 100%; }
   .bar-row { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; }
   .bar-track { grid-column: 1 / -1; order: 3; }
-  .nm-remark { max-width: 140px; }
+  .nm-remark { max-width: 100%; }
+  .nm-txt b, .nm-sub, .nm-remark { white-space: normal; word-break: break-word; }
   table th, table td { padding: 8px 6px; font-size: 12.5px; }
+
+  /* 支出洞察表格在手机端自动转为卡片式两行排版，彻底消除左右滑动 */
+  .ins-table, .ins-table tbody { display: block; width: 100%; }
+  .ins-table thead { display: none; }
+  .ins-table tr { display: grid; align-items: center; gap: 4px 10px; padding: 10px 0;
+    border-bottom: 1px solid var(--border); }
+  .ins-table tr:last-child { border-bottom: none; }
+  .ins-table td { display: block; padding: 0; border: none; min-width: 0; }
+  .ins-table td[colspan] { grid-column: 1 / -1; }
+
+  .ins-4 tr { grid-template-columns: 22px minmax(0, 1fr) auto; }
+  .ins-4 td:nth-child(1) { grid-column: 1; grid-row: 1; text-align: center; }
+  .ins-4 td:nth-child(2) { grid-column: 2; grid-row: 1; }
+  .ins-4 td:nth-child(4) { grid-column: 3; grid-row: 1; font-weight: 600; white-space: nowrap; text-align: right; }
+  .ins-4 td:nth-child(3) { grid-column: 2 / 4; grid-row: 2; font-size: 12px; }
+
+  .ins-3 tr { grid-template-columns: minmax(0, 1fr) auto; }
+  .ins-3 td:nth-child(1) { grid-column: 1; grid-row: 1 / 3; }
+  .ins-3 td:nth-child(3) { grid-column: 2; grid-row: 1; font-weight: 600; white-space: nowrap; text-align: right; }
+  .ins-3 td:nth-child(2) { grid-column: 2; grid-row: 2; font-size: 12px; white-space: nowrap; text-align: right; }
+
+  .ins-ot tr { grid-template-columns: minmax(0, 1fr) auto; }
+  .ins-ot td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .ins-ot td:nth-child(3) { grid-column: 2; grid-row: 1; font-weight: 600; white-space: nowrap; text-align: right; }
+  .ins-ot td:nth-child(2) { grid-column: 1; grid-row: 2; font-size: 12px; }
+  .ins-ot td:nth-child(4) { grid-column: 2; grid-row: 2; font-size: 12px; white-space: nowrap; text-align: right; }
 }
 </style>
