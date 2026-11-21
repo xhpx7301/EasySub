@@ -5,14 +5,14 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from app import activity, icon_library
-from app.billing import add_cycle, compute_next_renewal
+from app.billing import add_cycle, compute_next_renewal, initial_anchor
 from app.database import get_db
 from app.deps import get_current_user
-from app.models import Category, Subscription, User
+from app.models import Category, NotificationLog, Subscription, User
 from app.schemas import SubscriptionIn, SubscriptionOut, SubscriptionUpdate
 from app.security import verify_password
 from app.services import exchange, notify
@@ -62,12 +62,26 @@ def create_sub(
         site = icon_library.website_for_name(data.get("name", ""))
         if site:
             data["url"] = site
-    if data["billing_type"] == "recurring" and not data.get("next_renewal_date"):
-        data["next_renewal_date"] = compute_next_renewal(
-            data["start_date"], data["cycle"], data["cycle_count"]
-        )
+    if data["billing_type"] == "recurring":
+        try:
+            data["billing_anchor_day"] = initial_anchor(
+                data["cycle"],
+                data["start_date"],
+                data.get("next_renewal_date"),
+                data.get("billing_anchor_day"),
+            )
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
+        if not data.get("next_renewal_date"):
+            data["next_renewal_date"] = compute_next_renewal(
+                data["start_date"],
+                data["cycle"],
+                data["cycle_count"],
+                anchor_day=data["billing_anchor_day"],
+            )
     if data["billing_type"] == "one_time":
         data["next_renewal_date"] = None
+        data["billing_anchor_day"] = None
         data["auto_renew"] = False
     sub = Subscription(**data, user_id=user.id)
     db.add(sub)
@@ -160,10 +174,15 @@ def import_csv(payload: CsvImportIn, user: User = Depends(get_current_user), db:
             remark=(row.get("remark") or None), url=(row.get("url") or None),
             remind_days_before=(row.get("remind_days_before") or "7,6,5,4,3,2,1").strip() or "7,6,5,4,3,2,1",
         )
-        if billing_type == "recurring" and not sub.next_renewal_date:
-            sub.next_renewal_date = compute_next_renewal(start, sub.cycle, sub.cycle_count)
+        if billing_type == "recurring":
+            sub.billing_anchor_day = initial_anchor(sub.cycle, start, sub.next_renewal_date)
+            if not sub.next_renewal_date:
+                sub.next_renewal_date = compute_next_renewal(
+                    start, sub.cycle, sub.cycle_count, anchor_day=sub.billing_anchor_day
+                )
         if billing_type == "one_time":
             sub.next_renewal_date = None
+            sub.billing_anchor_day = None
             sub.auto_renew = False
         db.add(sub)
         count += 1
@@ -190,10 +209,33 @@ def update_sub(
     sub = db.get(Subscription, sub_id)
     if not sub or sub.user_id != user.id:
         raise HTTPException(404, "订阅不存在")
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    updates = payload.model_dump(exclude_unset=True)
+    old_cycle = sub.cycle
+    old_due = sub.next_renewal_date
+    old_start = sub.start_date
+    for k, v in updates.items():
         setattr(sub, k, v)
     if sub.billing_type == "one_time":
         sub.next_renewal_date = None
+        sub.billing_anchor_day = None
+    elif "billing_anchor_day" in updates:
+        try:
+            sub.billing_anchor_day = initial_anchor(
+                sub.cycle, sub.start_date, sub.next_renewal_date, sub.billing_anchor_day
+            )
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
+    elif sub.cycle not in ("month", "year"):
+        sub.billing_anchor_day = None
+    elif (
+        sub.cycle != old_cycle
+        or sub.next_renewal_date != old_due
+        or sub.start_date != old_start
+        or sub.billing_anchor_day is None
+    ):
+        sub.billing_anchor_day = initial_anchor(
+            sub.cycle, sub.start_date, sub.next_renewal_date
+        )
     db.commit()
     db.refresh(sub)
     return _to_out(db, sub, user.base_currency)
@@ -231,10 +273,16 @@ def renew_sub(
 
     if mode == "due":
         base = sub.next_renewal_date or today
-        sub.next_renewal_date = add_cycle(base, sub.cycle, sub.cycle_count)
+        anchor = sub.billing_anchor_day or (base.day if sub.cycle in ("month", "year") else None)
+        if sub.cycle in ("month", "year") and sub.billing_anchor_day is None:
+            sub.billing_anchor_day = anchor
+        sub.next_renewal_date = add_cycle(base, sub.cycle, sub.cycle_count, anchor_day=anchor)
     else:  # today
         sub.start_date = today
-        sub.next_renewal_date = add_cycle(today, sub.cycle, sub.cycle_count)
+        sub.billing_anchor_day = initial_anchor(sub.cycle, today, None)
+        sub.next_renewal_date = add_cycle(
+            today, sub.cycle, sub.cycle_count, anchor_day=sub.billing_anchor_day
+        )
 
     sub.last_renewed_at = today
     db.commit()
@@ -296,6 +344,8 @@ def delete_sub(
     if not sub or sub.user_id != user.id:
         raise HTTPException(404, "订阅不存在")
     name = sub.name
+    # 先清理该订阅关联的通知日志，避免 MySQL 外键约束导致删除报 1451 / 500
+    db.execute(delete(NotificationLog).where(NotificationLog.subscription_id == sub.id))
     db.delete(sub)
     db.commit()
     activity.log("subscription.delete", f"删除订阅「{name}」", user=user, level="warn")

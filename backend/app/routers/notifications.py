@@ -57,8 +57,9 @@ def test_notify(payload: NotifyTestIn, user: User = Depends(get_current_user)):
     try:
         notify.send_one(payload.channel, conf, subject, text)
     except Exception as e:  # noqa: BLE001
-        activity.log("notify.test", f"{payload.channel} 测试发送失败：{e}", user=user, level="error")
-        raise HTTPException(502, f"发送失败：{e}")
+        safe_err = notify.redact_error(e, conf)
+        activity.log("notify.test", f"{payload.channel} 测试发送失败：{safe_err}", user=user, level="error")
+        raise HTTPException(502, f"发送失败：{safe_err}")
     activity.log("notify.test", f"发送了 {payload.channel} 测试通知", user=user)
     return {"ok": True}
 
@@ -76,8 +77,9 @@ def wecom_check(payload: WecomCheckIn, user: User = Depends(get_current_user)):
     try:
         info = notify.wecom_agent_info(conf)
     except Exception as e:  # noqa: BLE001
-        activity.log("notify.wecom.check", f"企业微信应用校验失败：{e}", user=user, level="error")
-        raise HTTPException(502, str(e))
+        safe_err = notify.redact_error(e, conf)
+        activity.log("notify.wecom.check", f"企业微信应用校验失败：{safe_err}", user=user, level="error")
+        raise HTTPException(502, safe_err)
     activity.log("notify.wecom.check", f"校验企业微信应用「{info.get('name')}」成功", user=user)
     return {"ok": True, "agent": info}
 
@@ -137,8 +139,9 @@ def telegram_test(
             proxy=user.telegram_proxy,
         )
     except Exception as e:  # noqa: BLE001
-        activity.log("telegram.test", f"测试消息发送失败：{e}", user=user, level="error")
-        raise HTTPException(502, f"发送失败：{e}")
+        safe_err = notify.redact_error(e, {"token": token, "proxy": user.telegram_proxy or ""})
+        activity.log("telegram.test", f"测试消息发送失败：{safe_err}", user=user, level="error")
+        raise HTTPException(502, f"发送失败：{safe_err}")
     activity.log("telegram.test", "发送了 Telegram 测试消息", user=user)
     return {"ok": True}
 
@@ -163,6 +166,7 @@ def logs(limit: int = 50, user: User = Depends(get_current_user), db: Session = 
             "subscription_id": r.subscription_id,
             "days_before": r.days_before,
             "rule_label": r.rule_label,
+            "channel": r.channel,
             "status": r.status,
             "message": r.message,
             "sent_at": r.sent_at,

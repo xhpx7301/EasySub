@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import pyotp
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
@@ -41,26 +41,41 @@ def _gen_code() -> str:
     return f"{secrets.randbelow(1000000):06d}"
 
 
-# 登录失败限流（内存版）：同一用户名在锁定窗口内失败过多则暂时拒绝
+# 登录失败限流（内存版）：按「来源 IP + 用户名」组合计数。
+# 不做只按 IP 的全局限制，避免经 Lucky/Caddy/nginx 反代时一个用户输错密码锁住全部用户。
 _FAILS: dict[str, list[float]] = {}
 _MAX_FAILS = 8
 _LOCK_SECONDS = 900
 
 
-def _check_lock(username: str) -> None:
+def _login_key(request: Request, username: str) -> str:
+    ip = request.client.host if request.client else "unknown"
+    return f"{ip}:{username.lower()}"
+
+
+def _check_lock(key: str) -> None:
     now = time.time()
-    fails = [t for t in _FAILS.get(username, []) if now - t < _LOCK_SECONDS]
-    _FAILS[username] = fails
+    fails = [t for t in _FAILS.get(key, []) if now - t < _LOCK_SECONDS]
+    if fails:
+        _FAILS[key] = fails
+    else:
+        _FAILS.pop(key, None)
     if len(fails) >= _MAX_FAILS:
         raise HTTPException(429, "登录尝试过多，请约 15 分钟后再试")
 
 
-def _record_fail(username: str) -> None:
-    _FAILS.setdefault(username, []).append(time.time())
+def _record_fail(key: str) -> None:
+    _FAILS.setdefault(key, []).append(time.time())
 
 
-def _clear_fail(username: str) -> None:
-    _FAILS.pop(username, None)
+def _clear_fail(key: str) -> None:
+    _FAILS.pop(key, None)
+
+
+def _clear_user_fails(username: str) -> None:
+    suffix = f":{username.lower()}"
+    for k in [k for k in _FAILS if k == username or k.endswith(suffix)]:
+        _FAILS.pop(k, None)
 
 
 @router.post("/register")
@@ -133,14 +148,16 @@ def verify_email(payload: VerifyEmailIn, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenOut)
 def login(
+    request: Request,
     form: OAuth2PasswordRequestForm = Depends(),
     otp: str | None = Form(default=None),
     db: Session = Depends(get_db),
 ):
-    _check_lock(form.username)
+    key = _login_key(request, form.username)
+    _check_lock(key)
     user = db.scalar(select(User).where(User.username == form.username))
     if not user or not verify_password(form.password, user.password_hash):
-        _record_fail(form.username)
+        _record_fail(key)
         raise HTTPException(401, "用户名或密码错误")
     if not user.email_verified:
         raise HTTPException(403, "请先完成邮箱验证")
@@ -153,9 +170,9 @@ def login(
         if not otp:
             raise HTTPException(401, "需要两步验证码", headers={"X-2FA-Required": "1"})
         if not pyotp.TOTP(user.totp_secret).verify(otp.strip(), valid_window=1):
-            _record_fail(form.username)
+            _record_fail(key)
             raise HTTPException(401, "两步验证码不正确")
-    _clear_fail(form.username)
+    _clear_fail(key)
     activity.log("auth.login", f"用户 {user.username} 登录", user=user)
     return TokenOut(
         access_token=create_access_token(user.id),
@@ -206,7 +223,7 @@ def reset_password(payload: ResetIn, db: Session = Depends(get_db)):
     user.email_code = None
     user.email_code_expires = None
     db.commit()
-    _clear_fail(user.username)
+    _clear_user_fails(user.username)
     activity.log("auth.reset_password", f"{user.username} 通过邮箱重置了密码", user=user, level="warn")
     return {"ok": True, "message": "密码已重置，请用新密码登录"}
 

@@ -18,7 +18,7 @@
     <div v-else-if="!filteredItems.length" class="card muted">{{ t('icons.empty') }}</div>
     <div v-else class="icon-management-grid">
       <div v-for="item in filteredItems" :key="item.id" class="card icon-item" :class="{ disabled: !item.is_enabled }">
-        <img :src="item.icon" :alt="item.name" class="icon-preview" @error="onImageError" />
+        <img :src="item.icon" :alt="item.name" loading="lazy" decoding="async" class="icon-preview" @error="onImageError" />
         <div class="icon-item-main">
           <div class="icon-item-title">
             <b>{{ item.name }}</b>

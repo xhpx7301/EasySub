@@ -436,6 +436,25 @@ async function exportData() {
   }
 }
 
+function parseBackupJson(rawText) {
+  const cleaned = String(rawText || '').replace(/^\uFEFF/, '')
+  try {
+    return JSON.parse(cleaned)
+  } catch {
+    const err = new Error('INVALID_JSON')
+    err.code = 'INVALID_JSON'
+    throw err
+  }
+}
+
+function formatImportError(err) {
+  if (err?.code === 'INVALID_JSON') return t('backup.badJson')
+  if (err?.response?.data?.detail) return err.response.data.detail
+  if (err?.response?.status) return t('backup.serverErr', { status: err.response.status })
+  if (err?.request) return t('backup.netErr')
+  return t('backup.importFail')
+}
+
 async function importData(e) {
   const file = e.target.files[0]
   if (!file) return
@@ -445,13 +464,18 @@ async function importData(e) {
     return
   }
   try {
-    const json = JSON.parse(await file.text())
+    const json = parseBackupJson(await file.text())
+    if (json?.scope === 'all' || (Array.isArray(json?.users) && !Array.isArray(json?.subscriptions))) {
+      backupOk.value = false
+      backupMsg.value = t('backup.wrongScope')
+      return
+    }
     const { data } = await api.post('/api/backup/import', { data: json, replace: importReplace.value })
     backupOk.value = true
     backupMsg.value = t('backup.importOk', { n: data.imported })
   } catch (err) {
     backupOk.value = false
-    backupMsg.value = err.response?.data?.detail || t('backup.importFail')
+    backupMsg.value = formatImportError(err)
   } finally {
     e.target.value = ''
   }
@@ -488,13 +512,13 @@ async function importAll(e) {
     return
   }
   try {
-    const json = JSON.parse(await file.text())
+    const json = parseBackupJson(await file.text())
     const { data } = await api.post('/api/backup/import-all', { data: json, replace: importAllReplace.value })
     backupAllOk.value = true
     backupAllMsg.value = t('backupAll.importOk', { users: data.users, created: data.created_users, n: data.imported })
   } catch (err) {
     backupAllOk.value = false
-    backupAllMsg.value = err.response?.data?.detail || t('backup.importFail')
+    backupAllMsg.value = formatImportError(err)
   } finally {
     e.target.value = ''
   }

@@ -31,6 +31,7 @@ _COLUMNS = [
     ("subscriptions", "card_last4", "VARCHAR(8) NULL"),
     ("subscriptions", "card_expiry", "VARCHAR(8) NULL"),
     ("subscriptions", "reminder_rules", "JSON NULL"),
+    ("subscriptions", "billing_anchor_day", "INT NULL"),
     ("users", "totp_secret", "VARCHAR(64) NULL"),
     ("users", "totp_enabled", "TINYINT(1) NOT NULL DEFAULT 0"),
     ("notification_log", "event_key", "VARCHAR(160) NULL"),

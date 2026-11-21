@@ -12,40 +12,72 @@
         <button :class="{ on: filter === 'one_time' }" @click="setFilter('one_time')">{{ t('sub.filterOneTime') }}</button>
       </div>
       <input v-model="search" class="search-box" :placeholder="'🔍 ' + t('sub.searchPh')" />
-      <button class="btn ghost sm" @click="exportCsv">⬇️ CSV</button>
-      <label class="btn ghost sm" style="margin:0;cursor:pointer">⬆️ CSV
-        <input type="file" accept=".csv,text/csv" hidden @change="importCsv" />
-      </label>
-      <span class="muted drag-hint">⠿ {{ t('sub.dragHint') }}</span>
+      <div class="bar-acts">
+        <button type="button" class="btn ghost sm mode-btn" :class="{ active: manage === 'sort' }"
+                :aria-pressed="manage === 'sort'" @click="setManage('sort')">
+          <span class="btn-ico" v-html="icon('grip')"></span>{{ t('sub.sortMode') }}
+        </button>
+        <button type="button" class="btn ghost sm mode-btn" :class="{ active: manage === 'select' }"
+                :aria-pressed="manage === 'select'" @click="setManage('select')">
+          <span class="btn-ico" v-html="icon('check')"></span>{{ t('sub.selectMode') }}
+        </button>
+        <button type="button" class="btn ghost sm" @click="exportCsv">⬇️ CSV</button>
+        <label class="btn ghost sm" style="margin:0;cursor:pointer">⬆️ CSV
+          <input type="file" accept=".csv,text/csv" hidden @change="importCsv" />
+        </label>
+      </div>
+      <span v-if="!manage" class="muted drag-hint">⠿ {{ t('sub.dragHint') }}</span>
     </div>
 
     <div v-if="!subs.length" class="card muted">{{ t('dashboard.none') }}</div>
 
     <!-- 按分类分组 -->
-    <div v-for="g in grouped" :key="g.key" class="cat-group"
+    <div v-for="(g, gi) in grouped" :key="g.key" class="cat-group"
          :class="{ 'drop-cat': dragOverCat === g.key }"
-         draggable="true"
+         :draggable="manage !== 'select'"
          @dragstart="onCatDragStart(g.key, $event)"
          @dragover.prevent="onCatDragOver(g.key)"
          @dragend="clearDrag"
          @drop="onCatDrop(g.key)">
       <div class="cat-head">
-        <span class="grip">⠿</span>
+        <span class="grip" v-if="manage !== 'select'">⠿</span>
         <span class="cat-ico">{{ g.icon }}</span>
         <span class="cat-name">{{ g.name }}</span>
         <span class="cat-count">{{ g.items.length }}</span>
+        <div v-if="manage === 'sort'" class="cat-sort">
+          <button type="button" class="icon-btn sm-btn" :disabled="gi === 0"
+                  :aria-label="t('sub.moveCatUp', { name: g.name })" :title="t('sub.moveCatUp', { name: g.name })"
+                  @click="moveCat(g.key, -1)"><span v-html="icon('chevronU')"></span></button>
+          <button type="button" class="icon-btn sm-btn" :disabled="gi === grouped.length - 1"
+                  :aria-label="t('sub.moveCatDown', { name: g.name })" :title="t('sub.moveCatDown', { name: g.name })"
+                  @click="moveCat(g.key, 1)"><span v-html="icon('chevronD')"></span></button>
+        </div>
+        <button v-else-if="manage === 'select'" type="button" class="btn ghost sm cat-sel-btn" @click="toggleCat(g)">
+          {{ g.items.every((s) => selected.has(s.id)) ? t('sub.selectNone') : t('sub.selectAll') }}
+        </button>
       </div>
 
       <div class="sub-grid">
-        <div v-for="s in g.items" :key="s.id" class="card sub-card"
-             :class="{ inactive: !s.is_active, expired: isExpired(s), soon: isSoon(s), 'drop-card': dragOverSub === s.id }"
-             draggable="true"
+        <div v-for="(s, si) in g.items" :key="s.id" class="card sub-card"
+             :class="{
+               inactive: !s.is_active,
+               expired: isExpired(s),
+               soon: isSoon(s),
+               'drop-card': dragOverSub === s.id,
+               selecting: manage === 'select',
+               picked: manage === 'select' && selected.has(s.id)
+             }"
+             :draggable="manage !== 'select'"
+             @click="manage === 'select' && toggleSel(s.id)"
              @dragstart.stop="onCardDragStart(g.key, s.id, $event)"
              @dragover.prevent.stop="onCardDragOver(g.key, s.id)"
              @dragend="clearDrag"
              @drop.stop="onCardDrop(g.key, s.id)">
           <div class="sc-head">
-            <img v-if="isImg(s.icon)" :src="s.icon" class="sc-ico" />
+            <input v-if="manage === 'select'" type="checkbox" class="sc-check"
+                   :checked="selected.has(s.id)" :aria-label="s.name"
+                   @click.stop @change="toggleSel(s.id)" />
+            <img v-if="isImg(s.icon)" :src="s.icon" loading="lazy" decoding="async" class="sc-ico" />
             <span v-else class="sc-ico emoji">{{ s.icon || '🔖' }}</span>
             <div class="sc-title">
               <div class="sc-name">{{ s.name }}</div>
@@ -90,7 +122,17 @@
             </div>
           </div>
 
-          <div class="sc-acts">
+          <div v-if="manage === 'sort'" class="sc-acts">
+            <button type="button" class="btn sm ghost sort-act" :disabled="si === 0"
+                    @click.stop="moveSub(g.key, s.id, -1)">
+              <span class="btn-ico" v-html="icon('chevronU')"></span>{{ t('sub.moveUp') }}
+            </button>
+            <button type="button" class="btn sm ghost sort-act" :disabled="si === g.items.length - 1"
+                    @click.stop="moveSub(g.key, s.id, 1)">
+              <span class="btn-ico" v-html="icon('chevronD')"></span>{{ t('sub.moveDown') }}
+            </button>
+          </div>
+          <div v-else-if="manage !== 'select'" class="sc-acts">
             <button class="btn sm ghost" @click="openEdit(s)">{{ t('sub.edit') }}</button>
             <button v-if="s.billing_type === 'recurring'" class="btn sm" @click="askRenew(s)">♻️ {{ t('sub.renew') }}</button>
             <button class="btn sm danger" @click="askDelete(s)">{{ t('sub.delete') }}</button>
@@ -99,41 +141,73 @@
       </div>
     </div>
 
-    <!-- 续费确认弹窗 -->
-    <div v-if="renewTarget" class="modal-mask" @click.self="renewTarget = null">
+    <!-- 批量操作底部浮动栏 -->
+    <div v-if="manage === 'select'" class="bulk-bar" role="toolbar" :aria-label="t('sub.selectMode')">
+      <span class="bulk-n" role="status">{{ t('sub.selectedN', { n: selected.size }) }}</span>
+      <button type="button" class="btn sm ghost" :disabled="!visibleIds.length || bulkBusy" @click="toggleAllVisible">
+        {{ allVisibleSelected ? t('sub.selectNone') : t('sub.selectAll') }}
+      </button>
+      <span class="bulk-sep"></span>
+      <button type="button" class="btn sm" :disabled="!selectedRecurring.length || bulkBusy" @click="askBulkRenew">
+        ♻️ {{ t('sub.renew') }}
+      </button>
+      <button type="button" class="btn sm ghost" :disabled="!selected.size || bulkBusy" @click="bulkSetActive(true)">
+        {{ t('sub.enable') }}
+      </button>
+      <button type="button" class="btn sm ghost" :disabled="!selected.size || bulkBusy" @click="bulkSetActive(false)">
+        {{ t('sub.disable') }}
+      </button>
+      <select class="bulk-cat" :disabled="!selected.size || bulkBusy" :aria-label="t('sub.moveToCat')"
+              :value="''" @change="bulkSetCategory($event)">
+        <option value="" disabled>{{ t('sub.moveToCat') }}</option>
+        <option :value="NONE">{{ t('sub.uncategorized') }}</option>
+        <option v-for="c in categories" :key="c.id" :value="String(c.id)">{{ c.icon }} {{ c.name }}</option>
+      </select>
+      <button type="button" class="btn sm danger" :disabled="!selected.size || bulkBusy" @click="askBulkDelete">
+        {{ t('sub.delete') }}
+      </button>
+      <button type="button" class="btn sm ghost" @click="setManage('select')">{{ t('sub.done') }}</button>
+    </div>
+
+    <!-- 续费确认弹窗（支持单个与批量） -->
+    <div v-if="renewTarget || renewBulk" class="modal-mask" @click.self="closeRenew">
       <div class="modal" style="width:460px">
         <h3>♻️ {{ t('sub.renewTitle') }}</h3>
-        <p style="font-size:14px;line-height:1.6">{{ t('sub.renewMsg', { name: renewTarget.name }) }}</p>
+        <p style="font-size:14px;line-height:1.6">
+          {{ renewBulk ? t('sub.bulkRenewMsg', { n: selectedRecurring.length }) : t('sub.renewMsg', { name: renewTarget.name }) }}
+        </p>
         <label class="opt" :class="{ on: renewMode === 'today' }">
           <input type="radio" value="today" v-model="renewMode" />
           <div>
             <div>{{ t('sub.renewToday') }}</div>
-            <div class="muted opt-d">→ {{ previewToday }}</div>
+            <div v-if="!renewBulk" class="muted opt-d">→ {{ previewToday }}</div>
           </div>
         </label>
         <label class="opt" :class="{ on: renewMode === 'due' }">
           <input type="radio" value="due" v-model="renewMode" />
           <div>
             <div>{{ t('sub.renewDue') }}</div>
-            <div class="muted opt-d">→ {{ previewDue }}</div>
+            <div v-if="!renewBulk" class="muted opt-d">→ {{ previewDue }}</div>
           </div>
         </label>
         <div class="row" style="justify-content:flex-end;margin-top:16px">
-          <button class="btn ghost" @click="renewTarget = null">{{ t('sub.cancel') }}</button>
+          <button class="btn ghost" @click="closeRenew">{{ t('sub.cancel') }}</button>
           <button class="btn" :disabled="renewing" @click="confirmRenew">{{ t('sub.confirm') }}</button>
         </div>
       </div>
     </div>
 
-    <!-- 删除确认（需验证密码） -->
-    <div v-if="delTarget" class="modal-mask" @click.self="delTarget = null">
+    <!-- 删除确认（需验证密码；支持单个与批量） -->
+    <div v-if="delTarget || delBulk" class="modal-mask" @click.self="closeDelete">
       <div class="modal" style="width:420px">
         <h3>🗑️ {{ t('sub.deleteTitle') }}</h3>
-        <p style="font-size:14px;line-height:1.6">{{ t('sub.deletePwdTip', { name: delTarget.name }) }}</p>
+        <p style="font-size:14px;line-height:1.6">
+          {{ delBulk ? t('sub.bulkDeleteTip', { n: selected.size }) : t('sub.deletePwdTip', { name: delTarget.name }) }}
+        </p>
         <input v-model="delPwd" type="password" :placeholder="t('sub.pwdPh')" @keyup.enter="confirmDelete" />
         <p v-if="delErr" class="err">{{ delErr }}</p>
         <div class="row" style="justify-content:flex-end;margin-top:16px">
-          <button class="btn ghost" @click="delTarget = null">{{ t('sub.cancel') }}</button>
+          <button class="btn ghost" @click="closeDelete">{{ t('sub.cancel') }}</button>
           <button class="btn danger" :disabled="deleting || !delPwd" @click="confirmDelete">{{ t('sub.delete') }}</button>
         </div>
       </div>
@@ -196,7 +270,7 @@
             <input v-model="iconSearch" class="icon-search" :placeholder="t('sub.iconSearchPh')" type="search" />
             <div class="lib-grid">
               <img v-for="it in filteredIconLib" :key="it.slug" :src="it.icon" :title="`${it.name} · ${it.domain}`"
-                   class="lib-ico" @click="form.icon = it.icon" />
+                   loading="lazy" decoding="async" class="lib-ico" @click="form.icon = it.icon" />
             </div>
             <div v-if="!filteredIconLib.length" class="muted icon-empty">{{ t('sub.iconSearchEmpty') }}</div>
           </details>
@@ -377,7 +451,7 @@
         <p v-if="formErr" class="err">{{ formErr }}</p>
         <div class="row" style="justify-content:flex-end;margin-top:16px">
           <button class="btn ghost" @click="showForm = false">{{ t('sub.cancel') }}</button>
-          <button class="btn" @click="save">{{ t('sub.save') }}</button>
+          <button class="btn" :disabled="saving" @click="save">{{ t('sub.save') }}</button>
         </div>
       </div>
     </div>
@@ -395,7 +469,7 @@
           <div class="lib-group-t">{{ g.label }}</div>
           <div class="svc-grid">
             <button v-for="s in g.items" :key="s.slug" class="svc" @click="pickFromBrowser(s)">
-              <img :src="s.icon" class="svc-ico" /> <span>{{ s.name }}</span>
+              <img :src="s.icon" loading="lazy" decoding="async" class="svc-ico" /> <span>{{ s.name }}</span>
             </button>
           </div>
         </div>
@@ -439,13 +513,20 @@ const showBrowser = ref(false)
 const browserQ = ref('')
 
 const renewTarget = ref(null)
+const renewBulk = ref(false)
 const renewMode = ref('today')
 const renewing = ref(false)
 
 const delTarget = ref(null)
+const delBulk = ref(false)
 const delPwd = ref('')
 const delErr = ref('')
 const deleting = ref(false)
+
+const saving = ref(false)
+const manage = ref('') // '' | 'sort' | 'select'
+const selected = reactive(new Set())
+const bulkBusy = ref(false)
 
 const toasts = ref([])
 let toastId = 0
@@ -491,25 +572,32 @@ function isSoon(s) {
   return d >= 0 && d <= 7
 }
 
-/* ---------- 客户端续费日计算（与后端 billing.add_cycle 对齐） ---------- */
-function addMonths(d, months) {
-  const base = new Date(d)
-  const day = base.getDate()
+/* ---------- 客户端续费日计算（与后端 billing.add_cycle 锚定日算法对齐） ---------- */
+function parseLocalDate(v) {
+  if (v instanceof Date) return new Date(v.getFullYear(), v.getMonth(), v.getDate())
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  const d = new Date(v)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+function addMonths(d, months, anchorDay = null) {
+  const base = parseLocalDate(d)
+  const day = anchorDay || base.getDate()
   const target = new Date(base.getFullYear(), base.getMonth() + months, 1)
   const dim = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
   target.setDate(Math.min(day, dim))
   return target
 }
-function addCycle(dateStr, cycle, count) {
+function addCycle(dateStr, cycle, count, anchorDay = null) {
   const n = Math.max(1, count || 1)
-  const d = new Date(dateStr)
+  const d = parseLocalDate(dateStr)
   if (cycle === 'day') { d.setDate(d.getDate() + n); return d }
   if (cycle === 'week') { d.setDate(d.getDate() + n * 7); return d }
-  if (cycle === 'year') return addMonths(d, n * 12)
-  return addMonths(d, n)
+  if (cycle === 'year') return addMonths(d, n * 12, anchorDay)
+  return addMonths(d, n, anchorDay)
 }
 function toISO(d) {
-  const x = new Date(d)
+  const x = parseLocalDate(d)
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
 }
 function ruleId() {
@@ -693,10 +781,108 @@ async function onCardDrop(catKey, id) {
   try { await api.post('/api/subscriptions/reorder', { ordered_ids: arr }) } catch { /* ignore */ }
 }
 
+/* ---------- 按钮排序 & 批量多选模式 ---------- */
+function setManage(mode) {
+  manage.value = manage.value === mode ? '' : mode
+  if (manage.value !== 'select') selected.clear()
+}
+async function moveCat(key, dir) {
+  const vis = grouped.value.map((g) => g.key)
+  const vi = vis.indexOf(key)
+  const targetKey = vis[vi + dir]
+  if (vi < 0 || !targetKey) return
+  const arr = [...catOrder.value]
+  const from = arr.indexOf(key)
+  const to = arr.indexOf(targetKey)
+  if (from < 0 || to < 0) return
+  arr.splice(to, 0, arr.splice(from, 1)[0])
+  catOrder.value = arr
+  const ids = arr.filter((k) => k !== NONE).map(Number)
+  try { await auth.updateMe({ category_order: ids }) } catch { /* ignore */ }
+}
+async function moveSub(catKey, id, dir) {
+  const group = grouped.value.find((g) => g.key === catKey)
+  if (!group) return
+  const visIds = group.items.map((s) => s.id)
+  const vi = visIds.indexOf(id)
+  const targetId = visIds[vi + dir]
+  if (vi < 0 || targetId == null) return
+  const arr = [...(orderMap[catKey] || [])]
+  const from = arr.indexOf(id)
+  const to = arr.indexOf(targetId)
+  if (from < 0 || to < 0) return
+  arr.splice(to, 0, arr.splice(from, 1)[0])
+  orderMap[catKey] = arr
+  try { await api.post('/api/subscriptions/reorder', { ordered_ids: arr }) } catch { /* ignore */ }
+}
+
+const visibleIds = computed(() => grouped.value.flatMap((g) => g.items.map((s) => s.id)))
+const allVisibleSelected = computed(
+  () => visibleIds.value.length > 0 && visibleIds.value.every((id) => selected.has(id))
+)
+const selectedRecurring = computed(
+  () => subs.value.filter((s) => selected.has(s.id) && s.billing_type === 'recurring').map((s) => s.id)
+)
+function toggleSel(id) { selected.has(id) ? selected.delete(id) : selected.add(id) }
+function toggleCat(g) {
+  const all = g.items.every((s) => selected.has(s.id))
+  for (const s of g.items) all ? selected.delete(s.id) : selected.add(s.id)
+}
+function toggleAllVisible() {
+  const all = allVisibleSelected.value
+  for (const id of visibleIds.value) all ? selected.delete(id) : selected.add(id)
+}
+async function runBulk(ids, fn) {
+  if (!ids.length || bulkBusy.value) return
+  bulkBusy.value = true
+  let ok = 0
+  let fail = 0
+  try {
+    for (const id of ids) {
+      try {
+        await fn(id)
+        ok += 1
+      } catch {
+        fail += 1
+      }
+    }
+    await load()
+  } finally {
+    bulkBusy.value = false
+  }
+  toast(fail ? t('sub.bulkPartial', { ok, fail }) : t('sub.bulkDone', { n: ok }), fail ? 'err' : 'ok')
+  if (!fail) selected.clear()
+}
+function askBulkRenew() {
+  if (!selectedRecurring.value.length) return
+  renewTarget.value = null
+  renewBulk.value = true
+  renewMode.value = 'today'
+}
+function bulkSetActive(active) {
+  runBulk([...selected], (id) => api.put(`/api/subscriptions/${id}`, { is_active: active }))
+}
+function bulkSetCategory(e) {
+  const val = e.target.value
+  e.target.value = ''
+  if (!val) return
+  const category_id = val === NONE ? null : Number(val)
+  runBulk([...selected], (id) => api.put(`/api/subscriptions/${id}`, { category_id }))
+}
+function askBulkDelete() {
+  if (!selected.size) return
+  delTarget.value = null
+  delBulk.value = true
+  delPwd.value = ''
+  delErr.value = ''
+}
+
 async function load() {
   const params = filter.value ? { billing_type: filter.value } : {}
   const { data } = await api.get('/api/subscriptions', { params })
   subs.value = data
+  const valid = new Set(data.map((s) => s.id))
+  for (const id of [...selected]) if (!valid.has(id)) selected.delete(id)
   rebuild()
 }
 function setFilter(f) { filter.value = f; load() }
@@ -820,7 +1006,7 @@ async function exportCsv() {
     const a = document.createElement('a')
     a.href = url; a.download = 'easysub-subscriptions.csv'
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
-  } catch (e) { toast(e.response?.data?.detail || 'Error') }
+  } catch (e) { toast(e.response?.data?.detail || 'Error', 'err') }
 }
 async function importCsv(e) {
   const file = e.target.files[0]
@@ -830,10 +1016,12 @@ async function importCsv(e) {
     const { data } = await api.post('/api/subscriptions/import-csv', { content })
     toast(t('sub.csvImported', { n: data.imported }))
     load()
-  } catch (err) { toast(err.response?.data?.detail || 'Error') } finally { e.target.value = '' }
+  } catch (err) { toast(err.response?.data?.detail || 'Error', 'err') } finally { e.target.value = '' }
 }
 
 async function save() {
+  if (saving.value) return
+  saving.value = true
   formErr.value = ''
   try {
     if (bundleMode.value === 'create' && newBundleName.value.trim()) {
@@ -861,27 +1049,38 @@ async function save() {
     load()
   } catch (e) {
     formErr.value = e.response?.data?.detail || 'Error'
+  } finally {
+    saving.value = false
   }
 }
 
-/* ---------- 续费 ---------- */
-function askRenew(s) { renewTarget.value = s; renewMode.value = 'today' }
+/* ---------- 续费（支持单个与批量） ---------- */
+function askRenew(s) { renewBulk.value = false; renewTarget.value = s; renewMode.value = 'today' }
+function closeRenew() { renewTarget.value = null; renewBulk.value = false }
 const previewToday = computed(() =>
   renewTarget.value ? toISO(addCycle(new Date(), renewTarget.value.cycle, renewTarget.value.cycle_count)) : ''
 )
 const previewDue = computed(() => {
   if (!renewTarget.value) return ''
-  const base = renewTarget.value.next_renewal_date ? new Date(renewTarget.value.next_renewal_date) : new Date()
-  return toISO(addCycle(base, renewTarget.value.cycle, renewTarget.value.cycle_count))
+  const base = renewTarget.value.next_renewal_date ? parseLocalDate(renewTarget.value.next_renewal_date) : new Date()
+  const anchor = renewTarget.value.billing_anchor_day || base.getDate()
+  return toISO(addCycle(base, renewTarget.value.cycle, renewTarget.value.cycle_count, anchor))
 })
 async function confirmRenew() {
-  if (!renewTarget.value || renewing.value) return
+  if ((!renewTarget.value && !renewBulk.value) || renewing.value) return
   renewing.value = true
   try {
-    const { data } = await api.post(`/api/subscriptions/${renewTarget.value.id}/renew`, { mode: renewMode.value })
-    toast(t('sub.renewOk', { date: data.next_renewal_date }))
-    renewTarget.value = null
-    load()
+    if (renewBulk.value) {
+      const ids = [...selectedRecurring.value]
+      const mode = renewMode.value
+      closeRenew()
+      await runBulk(ids, (id) => api.post(`/api/subscriptions/${id}/renew`, { mode }))
+    } else {
+      const { data } = await api.post(`/api/subscriptions/${renewTarget.value.id}/renew`, { mode: renewMode.value })
+      toast(t('sub.renewOk', { date: data.next_renewal_date }))
+      closeRenew()
+      load()
+    }
   } catch (e) {
     toast(e.response?.data?.detail || 'Error', 'err')
   } finally {
@@ -889,16 +1088,39 @@ async function confirmRenew() {
   }
 }
 
-function askDelete(s) { delTarget.value = s; delPwd.value = ''; delErr.value = '' }
+function askDelete(s) { delBulk.value = false; delTarget.value = s; delPwd.value = ''; delErr.value = '' }
+function closeDelete() { delTarget.value = null; delBulk.value = false; delPwd.value = ''; delErr.value = '' }
 async function confirmDelete() {
-  if (!delTarget.value || deleting.value || !delPwd.value) return
+  if ((!delTarget.value && !delBulk.value) || deleting.value || !delPwd.value) return
   deleting.value = true
   delErr.value = ''
   try {
-    await api.delete(`/api/subscriptions/${delTarget.value.id}`, { data: { password: delPwd.value } })
-    delTarget.value = null
-    toast(t('sub.delete'))
-    load()
+    if (delBulk.value) {
+      const ids = [...selected]
+      let ok = 0
+      let fail = 0
+      for (const id of ids) {
+        try {
+          await api.delete(`/api/subscriptions/${id}`, { data: { password: delPwd.value } })
+          selected.delete(id)
+          ok += 1
+        } catch (e) {
+          if (e.response?.status === 403) {
+            delErr.value = e.response?.data?.detail || 'Error'
+            return
+          }
+          fail += 1
+        }
+      }
+      closeDelete()
+      await load()
+      toast(fail ? t('sub.bulkPartial', { ok, fail }) : t('sub.bulkDone', { n: ok }), fail ? 'err' : 'ok')
+    } else {
+      await api.delete(`/api/subscriptions/${delTarget.value.id}`, { data: { password: delPwd.value } })
+      closeDelete()
+      toast(t('sub.delete'))
+      load()
+    }
   } catch (e) {
     delErr.value = e.response?.data?.detail || 'Error'
   } finally {
@@ -926,7 +1148,12 @@ onMounted(async () => {
 <style scoped>
 .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 h1 { margin-top: 0; }
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.bar-acts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mode-btn, .sort-act { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.mode-btn.active { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); font-weight: 600; }
+.btn-ico { width: 14px; height: 14px; display: inline-flex; flex-shrink: 0; }
+.btn-ico :deep(svg) { width: 14px; height: 14px; }
 .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; padding: 4px; }
 .seg button { border: none; background: transparent; padding: 6px 14px; border-radius: 6px;
@@ -954,6 +1181,10 @@ h1 { margin-top: 0; }
 .cat-name { font-weight: 700; font-size: 16px; }
 .cat-count { background: var(--surface-2); color: var(--text-soft); border-radius: 20px;
   padding: 1px 9px; font-size: 12px; }
+.cat-sort { display: inline-flex; gap: 4px; margin-left: auto; }
+.cat-sel-btn { margin-left: auto; }
+.sm-btn { width: 28px; height: 28px; padding: 5px; }
+.sm-btn:disabled { opacity: .35; cursor: not-allowed; }
 
 /* 放大后的订阅卡片 */
 .sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
@@ -973,6 +1204,17 @@ h1 { margin-top: 0; }
 .sub-card.expired { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger), var(--shadow); }
 .sub-card.soon { border-color: var(--warning); box-shadow: 0 0 0 1px var(--warning), var(--shadow); }
 .sub-card.drop-card { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+.sub-card.selecting { cursor: pointer; }
+.sub-card.picked { border-color: var(--primary); background: color-mix(in srgb, var(--primary-soft) 55%, var(--surface));
+  box-shadow: 0 0 0 2px var(--primary-soft), var(--shadow); }
+.sc-check { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--primary); cursor: pointer; }
+.bulk-bar { position: sticky; bottom: 16px; z-index: 30; margin-top: 16px; padding: 10px 14px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--primary);
+  border-radius: 14px; box-shadow: var(--shadow-lg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.bulk-n { font-weight: 600; font-size: 14px; padding: 0 4px; color: var(--primary); }
+.bulk-sep { flex: 1; min-width: 8px; }
+.bulk-cat { width: auto; min-width: 130px; max-width: 200px; padding: 5px 10px; font-size: 13px; border-radius: 8px; }
 .sc-head { display: flex; align-items: center; gap: 12px; }
 .sc-ico { width: 44px; height: 44px; border-radius: 12px; object-fit: contain; border: 1px solid var(--border);
   flex-shrink: 0; background: var(--surface-2); transition: transform .25s cubic-bezier(.2,.8,.2,1); }
@@ -1048,6 +1290,10 @@ h1 { margin-top: 0; }
 .svc-ico { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; flex-shrink: 0; }
 .svc span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+@media (max-width: 860px) {
+  .bulk-bar { bottom: calc(74px + env(safe-area-inset-bottom)); padding: 10px; gap: 6px; }
+  .bulk-sep { display: none; }
+}
 @media (max-width: 720px) {
   .sub-grid { grid-template-columns: 1fr; }
   .sc-name { font-size: 16px; }

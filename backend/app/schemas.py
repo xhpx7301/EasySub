@@ -134,6 +134,7 @@ class SubscriptionIn(BaseModel):
     cycle_count: int = 1
     start_date: date | None = None
     next_renewal_date: date | None = None
+    billing_anchor_day: int | None = None
     end_date: date | None = None
     is_active: bool = True
     auto_renew: bool = True
@@ -166,6 +167,7 @@ class SubscriptionUpdate(BaseModel):
     cycle_count: int | None = None
     start_date: date | None = None
     next_renewal_date: date | None = None
+    billing_anchor_day: int | None = None
     end_date: date | None = None
     is_active: bool | None = None
     auto_renew: bool | None = None
@@ -200,6 +202,7 @@ class SubscriptionOut(BaseModel):
     cycle_count: int
     start_date: date
     next_renewal_date: date | None
+    billing_anchor_day: int | None = None
     end_date: date | None
     last_renewed_at: date | None = None
     is_active: bool

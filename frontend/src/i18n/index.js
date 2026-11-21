@@ -9,7 +9,7 @@ const zh = {
     testOk: '连接成功', testFail: '连接失败', tip: '提示：若数据库也在 Docker Compose 内，主机填服务名（如 db）；否则填 NAS 局域网 IP。',
     done: '配置完成，正在跳转登录...'
   },
-  nav: { dashboard: '仪表盘', subscriptions: '订阅管理', icons: '图标库', calendar: '日历', reports: '报表分析', notifications: '通知中心', notifyConfig: '通知配置', logs: '实时日志', settings: '设置', users: '用户管理', logout: '退出' },
+  nav: { dashboard: '仪表盘', subscriptions: '订阅管理', icons: '图标库', calendar: '日历', reports: '报表分析', notifications: '通知中心', notifyConfig: '通知配置', logs: '实时日志', settings: '设置', users: '用户管理', more: '更多', logout: '退出' },
   notifyCfg: {
     title: '通知', save: '保存通知配置', test: '测试通知', saved: '已保存', testOk: '测试通知已发送',
     tgApiBase: 'TG API 反代（可选）', httpProxy: 'HTTP 代理（可选）',
@@ -123,7 +123,14 @@ const zh = {
     expiredTag: '已过期', soonTag: '即将到期', uncategorized: '未分类', dragHint: '拖动卡片可排序，拖动分类标题可调整分类顺序',
     deleteTitle: '删除订阅', deletePwdTip: '为防止误删，请输入你的登录密码以确认删除「{name}」', pwdPh: '登录密码',
     remark: '个性化备注', remarkPh: '如：家庭主力机 / 香港 CN2（会显示在卡片上）',
-    ipLabel: 'IP 地址（选填）', ipv4: 'IPv4', ipv6: 'IPv6'
+    ipLabel: 'IP 地址（选填）', ipv4: 'IPv4', ipv6: 'IPv6',
+    sortMode: '排序', selectMode: '多选', moveUp: '上移', moveDown: '下移',
+    moveCatUp: '上移分类「{name}」', moveCatDown: '下移分类「{name}」',
+    selectAll: '全选', selectNone: '取消全选', selectedN: '已选 {n} 项',
+    enable: '启用', disable: '停用', moveToCat: '移到分类…', done: '完成',
+    bulkRenewMsg: '确认批量续费已选中的 {n} 个循环订阅？（一次性买断项目将自动跳过）',
+    bulkDeleteTip: '为防止误删，请输入你的登录密码以确认批量删除已选中的 {n} 个订阅',
+    bulkDone: '批量操作完成，成功 {n} 项', bulkPartial: '批量操作完成：成功 {ok} 项，失败 {fail} 项'
   },
   icons: { title: '图标库', add: '新增图标', addTitle: '新增图标', editTitle: '编辑图标', searchPh: '搜索名称、域名或分类', all: '全部', global: '全局', personal: '我的', name: '名称', domain: '域名', category: '分类', iconUrl: '图标地址', upload: '上传图标', enabled: '启用', globalNew: '添加到全局图标库', edit: '编辑', delete: '删除', deleteConfirm: '确定删除图标「{name}」吗？', saved: '已保存', disabled: '已停用', empty: '暂无图标' },
   calendar: { title: '续费日历', noEvents: '本月无续费', today: '今天', more: '还有 {n} 项' },
@@ -150,7 +157,9 @@ const zh = {
     tip: '把你的订阅及自定义分类/付款方式等导出为 JSON 离线保存；重新部署后导入即可恢复，避免数据丢失。',
     export: '导出备份', import: '导入恢复', replace: '导入前清空现有订阅',
     replaceConfirm: '将先删除你当前的全部订阅，再从备份导入。确定继续？',
-    exportOk: '备份已下载', importOk: '已成功导入 {n} 个订阅', importFail: '导入失败：文件格式不正确'
+    exportOk: '备份已下载', importOk: '已成功导入 {n} 个订阅', importFail: '导入失败：文件格式不正确',
+    badJson: '导入失败：不是有效的 JSON 文件', serverErr: '导入失败：服务器返回 {status}',
+    netErr: '导入失败：无法连接服务器', wrongScope: '这是整站备份文件，请在下方「整站备份与恢复（管理员）」中导入'
   },
   backupAll: {
     title: '整站备份与恢复（管理员）',
@@ -199,7 +208,7 @@ const en = {
     testOk: 'Connected', testFail: 'Connection failed', tip: 'Tip: if MySQL runs in the same Compose, use the service name (e.g. db) as host; otherwise use the NAS LAN IP.',
     done: 'Done, redirecting to login...'
   },
-  nav: { dashboard: 'Dashboard', subscriptions: 'Subscriptions', icons: 'Icon library', calendar: 'Calendar', reports: 'Reports', notifications: 'Notifications', notifyConfig: 'Notify Channels', logs: 'Live Logs', settings: 'Settings', users: 'Users', logout: 'Logout' },
+  nav: { dashboard: 'Dashboard', subscriptions: 'Subscriptions', icons: 'Icon library', calendar: 'Calendar', reports: 'Reports', notifications: 'Notifications', notifyConfig: 'Notify Channels', logs: 'Live Logs', settings: 'Settings', users: 'Users', more: 'More', logout: 'Logout' },
   notifyCfg: {
     title: 'Notifications', save: 'Save config', test: 'Test', saved: 'Saved', testOk: 'Test notification sent',
     tgApiBase: 'TG API proxy (optional)', httpProxy: 'HTTP proxy (optional)',
@@ -312,7 +321,14 @@ const en = {
     expiredTag: 'Expired', soonTag: 'Due soon', uncategorized: 'Uncategorized', dragHint: 'Drag cards to reorder; drag a category header to reorder categories',
     deleteTitle: 'Delete subscription', deletePwdTip: 'To prevent mistakes, enter your login password to delete "{name}"', pwdPh: 'Login password',
     remark: 'Personal note', remarkPh: 'e.g. main box / HK CN2 (shown on card)',
-    ipLabel: 'IP address (optional)', ipv4: 'IPv4', ipv6: 'IPv6'
+    ipLabel: 'IP address (optional)', ipv4: 'IPv4', ipv6: 'IPv6',
+    sortMode: 'Reorder', selectMode: 'Select', moveUp: 'Move up', moveDown: 'Move down',
+    moveCatUp: 'Move category "{name}" up', moveCatDown: 'Move category "{name}" down',
+    selectAll: 'Select all', selectNone: 'Deselect all', selectedN: '{n} selected',
+    enable: 'Enable', disable: 'Disable', moveToCat: 'Move to category…', done: 'Done',
+    bulkRenewMsg: 'Renew {n} selected recurring subscriptions? (One-time items are skipped)',
+    bulkDeleteTip: 'To prevent mistakes, enter your login password to delete {n} selected subscriptions',
+    bulkDone: 'Done: {n} updated', bulkPartial: 'Completed: {ok} succeeded, {fail} failed'
   },
   icons: { title: 'Icon library', add: 'Add icon', addTitle: 'Add icon', editTitle: 'Edit icon', searchPh: 'Search name, domain, or category', all: 'All', global: 'Global', personal: 'My icons', name: 'Name', domain: 'Domain', category: 'Category', iconUrl: 'Icon URL', upload: 'Upload icon', enabled: 'Enabled', globalNew: 'Add to global library', edit: 'Edit', delete: 'Delete', deleteConfirm: 'Delete icon "{name}"?', saved: 'Saved', disabled: 'Disabled', empty: 'No icons' },
   calendar: { title: 'Renewal Calendar', noEvents: 'No renewals this month', today: 'Today', more: '+{n} more' },
@@ -339,7 +355,9 @@ const en = {
     tip: 'Export your subscriptions and custom categories/payment methods as JSON. After a redeploy, import it back to restore and avoid data loss.',
     export: 'Export backup', import: 'Import & restore', replace: 'Clear existing subscriptions first',
     replaceConfirm: 'This will delete all your current subscriptions before importing. Continue?',
-    exportOk: 'Backup downloaded', importOk: 'Imported {n} subscriptions', importFail: 'Import failed: invalid file'
+    exportOk: 'Backup downloaded', importOk: 'Imported {n} subscriptions', importFail: 'Import failed: invalid file',
+    badJson: 'Import failed: not a valid JSON file', serverErr: 'Import failed: server returned {status}',
+    netErr: 'Import failed: cannot reach server', wrongScope: 'This is a full-site backup; please import it under Full Site Backup (Admin) below'
   },
   backupAll: {
     title: 'Full Site Backup & Restore (Admin)',
@@ -388,7 +406,7 @@ const ru = {
     testOk: 'Подключено', testFail: 'Ошибка подключения', tip: 'Подсказка: если MySQL в том же Compose — укажите имя сервиса (например db); иначе IP NAS в локальной сети.',
     done: 'Готово, переход ко входу...'
   },
-  nav: { dashboard: 'Панель', subscriptions: 'Подписки', icons: 'Библиотека иконок', calendar: 'Календарь', reports: 'Отчёты', notifications: 'Уведомления', notifyConfig: 'Каналы', logs: 'Логи', settings: 'Настройки', users: 'Пользователи', logout: 'Выход' },
+  nav: { dashboard: 'Панель', subscriptions: 'Подписки', icons: 'Библиотека иконок', calendar: 'Календарь', reports: 'Отчёты', notifications: 'Уведомления', notifyConfig: 'Каналы', logs: 'Логи', settings: 'Настройки', users: 'Пользователи', more: 'Ещё', logout: 'Выход' },
   notifyCfg: {
     title: 'Уведомления', save: 'Сохранить', test: 'Тест', saved: 'Сохранено', testOk: 'Тестовое уведомление отправлено',
     tgApiBase: 'TG API прокси (опц.)', httpProxy: 'HTTP прокси (опц.)',
@@ -501,7 +519,14 @@ const ru = {
     expiredTag: 'Истекло', soonTag: 'Скоро', uncategorized: 'Без категории', dragHint: 'Перетащите карточки для сортировки; заголовок категории — для порядка категорий',
     deleteTitle: 'Удалить подписку', deletePwdTip: 'Во избежание ошибок введите пароль, чтобы удалить «{name}»', pwdPh: 'Пароль',
     remark: 'Заметка', remarkPh: 'напр. основной сервер / HK CN2 (на карточке)',
-    ipLabel: 'IP-адрес (необязательно)', ipv4: 'IPv4', ipv6: 'IPv6'
+    ipLabel: 'IP-адрес (необязательно)', ipv4: 'IPv4', ipv6: 'IPv6',
+    sortMode: 'Порядок', selectMode: 'Выбор', moveUp: 'Выше', moveDown: 'Ниже',
+    moveCatUp: 'Поднять категорию «{name}»', moveCatDown: 'Опустить категорию «{name}»',
+    selectAll: 'Выбрать все', selectNone: 'Снять выбор', selectedN: 'Выбрано: {n}',
+    enable: 'Включить', disable: 'Отключить', moveToCat: 'В категорию…', done: 'Готово',
+    bulkRenewMsg: 'Продлить выбранные регулярные подписки ({n})? (Разовые покупки будут пропущены)',
+    bulkDeleteTip: 'Во избежание ошибок введите пароль, чтобы удалить выбранные подписки ({n})',
+    bulkDone: 'Готово: обновлено {n}', bulkPartial: 'Готово: успешно {ok}, ошибок {fail}'
   },
   icons: { title: 'Библиотека иконок', add: 'Добавить иконку', addTitle: 'Добавить иконку', editTitle: 'Изменить иконку', searchPh: 'Поиск по имени, домену или категории', all: 'Все', global: 'Общие', personal: 'Мои', name: 'Название', domain: 'Домен', category: 'Категория', iconUrl: 'URL иконки', upload: 'Загрузить', enabled: 'Включено', globalNew: 'Добавить в общую библиотеку', edit: 'Изменить', delete: 'Удалить', deleteConfirm: 'Удалить иконку «{name}»?', saved: 'Сохранено', disabled: 'Отключено', empty: 'Иконок пока нет' },
   calendar: { title: 'Календарь продлений', noEvents: 'Нет продлений', today: 'Сегодня', more: '+{n} ещё' },
@@ -528,7 +553,9 @@ const ru = {
     tip: 'Экспортируйте подписки и свои категории/способы оплаты в JSON. После переустановки импортируйте файл, чтобы восстановить данные.',
     export: 'Экспорт', import: 'Импорт', replace: 'Сначала очистить подписки',
     replaceConfirm: 'Все текущие подписки будут удалены перед импортом. Продолжить?',
-    exportOk: 'Файл скачан', importOk: 'Импортировано подписок: {n}', importFail: 'Ошибка импорта: неверный файл'
+    exportOk: 'Файл скачан', importOk: 'Импортировано подписок: {n}', importFail: 'Ошибка импорта: неверный файл',
+    badJson: 'Ошибка импорта: некорректный JSON-файл', serverErr: 'Ошибка импорта: сервер вернул {status}',
+    netErr: 'Ошибка импорта: нет связи с сервером', wrongScope: 'Это полная резервная копия сайта — импортируйте её в разделе «Полная резервная копия сайта (админ)» ниже'
   },
   backupAll: {
     title: 'Полная резервная копия сайта (админ)',

@@ -1,5 +1,8 @@
+import html
 import os
 import re
+import threading
+import time
 import uuid
 
 import httpx
@@ -20,6 +23,56 @@ UPLOAD_DIR = os.path.join("data", "icons")
 LIBRARY_DIR = os.path.join("data", "icons", "library")
 ALLOWED = {".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".ico"}
 MAX_BYTES = 2 * 1024 * 1024  # 2MB
+# 镜像与源码中内置的服务图标目录（构建时从 frontend/public/preview-icons 复制到 frontend_dist）
+BUNDLED_DIRS = (
+    os.path.join("frontend_dist", "preview-icons"),
+    os.path.join("..", "frontend", "public", "preview-icons"),
+)
+FETCH_TIMEOUT = 4
+FAILURE_TTL = 6 * 3600
+PLACEHOLDER_HEADERS = {
+    "Cache-Control": "public, max-age=86400",
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+    "X-Content-Type-Options": "nosniff",
+}
+_failed: dict[str, float] = {}
+_client: httpx.Client | None = None
+_client_lock = threading.Lock()
+
+
+def _favicon_client() -> httpx.Client:
+    """复用单个 httpx.Client，避免每次请求重复加载 CA 证书拖慢响应。"""
+    global _client
+    with _client_lock:
+        if _client is None:
+            _client = httpx.Client(timeout=FETCH_TIMEOUT, follow_redirects=True)
+        return _client
+
+
+def _fetch_favicon(domain: str) -> bytes:
+    resp = _favicon_client().get(f"https://www.google.com/s2/favicons?domain={domain}&sz=64")
+    resp.raise_for_status()
+    return resp.content
+
+
+def placeholder_svg(name: str) -> str:
+    letter = html.escape((name or "?").strip()[:1].upper() or "?")
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+        '<rect width="64" height="64" rx="14" fill="#eef0ff"/>'
+        f'<text x="32" y="43" text-anchor="middle" fill="#5b5bd6" font-size="34" font-family="sans-serif">{letter}</text>'
+        "</svg>"
+    )
+
+
+def _contained(directory: str, name: str) -> str | None:
+    root = os.path.realpath(directory)
+    candidate = os.path.realpath(os.path.join(root, name))
+    try:
+        inside = os.path.commonpath([root, candidate]) == root
+    except ValueError:
+        return None
+    return candidate if inside and os.path.isfile(candidate) else None
 
 
 class IconUrlIn(BaseModel):
@@ -99,14 +152,20 @@ def import_from_url(payload: IconUrlIn, user: User = Depends(get_current_user)):
     url = payload.url.strip()
     if not url.startswith(("http://", "https://")):
         raise HTTPException(400, "请输入 http(s) 图标地址")
+    content = bytearray()
     try:
-        resp = httpx.get(url, timeout=15, follow_redirects=True)
-        resp.raise_for_status()
+        with httpx.Client(timeout=15, follow_redirects=True) as client:
+            with client.stream("GET", url) as resp:
+                resp.raise_for_status()
+                ctype = resp.headers.get("content-type", "")
+                for chunk in resp.iter_bytes():
+                    content.extend(chunk)
+                    if len(content) > MAX_BYTES:
+                        raise HTTPException(400, "图标过大（上限 2MB）")
+    except HTTPException:
+        raise
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"下载失败：{e}")
-    if len(resp.content) > MAX_BYTES:
-        raise HTTPException(400, "图标过大（上限 2MB）")
-    ctype = resp.headers.get("content-type", "")
+        raise HTTPException(502, f"下载失败：{type(e).__name__}")
     ext = {
         "image/png": ".png",
         "image/jpeg": ".jpg",
@@ -121,7 +180,7 @@ def import_from_url(payload: IconUrlIn, user: User = Depends(get_current_user)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     name = f"{user.id}_{uuid.uuid4().hex}{ext}"
     with open(os.path.join(UPLOAD_DIR, name), "wb") as f:
-        f.write(resp.content)
+        f.write(bytes(content))
     return {"url": f"/static/icons/{name}"}
 
 
@@ -224,7 +283,7 @@ def delete_library_item(item_id: int, user: User = Depends(get_current_user), db
 
 @router.get("/library/{slug}")
 def library_icon(slug: str):
-    """返回某个商家图标；本地无缓存时从公共 favicon 服务下载后缓存。"""
+    """返回商家图标：自定义地址 → 本地缓存 → 镜像内置图标 → 联网下载；失败返回可缓存的首字母占位图。"""
     safe = re.sub(r"[^A-Za-z0-9_.\-]", "", slug)
     if not safe.endswith(".png"):
         safe += ".png"
@@ -232,27 +291,50 @@ def library_icon(slug: str):
     if database.SessionLocal is not None:
         db = database.SessionLocal()
         try:
-            db_row = db.scalar(select(IconLibraryItem).where(IconLibraryItem.slug == safe.removesuffix(".png")))
+            db_row = db.scalar(
+                select(IconLibraryItem).where(IconLibraryItem.slug == safe.removesuffix(".png"))
+            )
         finally:
             db.close()
-    if db_row and db_row.icon_url.startswith(("/static/", "http://", "https://")) and not db_row.icon_url.startswith("/api/icons/library/"):
+    if (
+        db_row
+        and db_row.icon_url.startswith(("/static/", "http://", "https://"))
+        and not db_row.icon_url.startswith("/api/icons/library/")
+    ):
         return RedirectResponse(db_row.icon_url)
-    path = os.path.join(LIBRARY_DIR, safe)
-    if os.path.isfile(path):
-        return FileResponse(path)
+
+    for directory in (LIBRARY_DIR, *BUNDLED_DIRS):
+        found = _contained(directory, safe)
+        if found:
+            return FileResponse(found)
 
     domain = (db_row.domain if db_row else None) or icon_library.domain_for_slug(safe)
     if not domain:
         raise HTTPException(404, "未知图标")
-    # 用 Google favicon 服务抓取该商家图标（覆盖面广、稳定）
-    fav = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+
+    display_name = db_row.name if db_row else None
+    if not display_name:
+        entry = next((e for e in icon_library.manifest() if e["domain"] == domain), None)
+        display_name = entry["name"] if entry else domain
+    placeholder = Response(
+        content=placeholder_svg(display_name),
+        media_type="image/svg+xml",
+        headers=PLACEHOLDER_HEADERS,
+    )
+
+    failed_at = _failed.get(safe)
+    if failed_at is not None and time.monotonic() - failed_at < FAILURE_TTL:
+        return placeholder
+
+    # 联网抓取（大陆环境可能不可达，因此超时 4s 且失败 6 小时内不再重试）
     try:
-        resp = httpx.get(fav, timeout=12, follow_redirects=True)
-        resp.raise_for_status()
-        os.makedirs(LIBRARY_DIR, exist_ok=True)
-        with open(path, "wb") as f:
-            f.write(resp.content)
-        return Response(content=resp.content, media_type="image/png")
+        content = _fetch_favicon(domain)
     except Exception:  # noqa: BLE001
-        # 下载失败返回 1x1 透明占位，避免前端报错
-        raise HTTPException(404, "图标暂不可用")
+        _failed[safe] = time.monotonic()
+        return placeholder
+
+    _failed.pop(safe, None)
+    os.makedirs(LIBRARY_DIR, exist_ok=True)
+    with open(os.path.join(LIBRARY_DIR, safe), "wb") as f:
+        f.write(content)
+    return Response(content=content, media_type="image/png")

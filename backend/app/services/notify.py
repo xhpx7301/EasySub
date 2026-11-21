@@ -620,12 +620,37 @@ def dispatch_renewal_notice(user, name: str, renewed_on, next_due,
     return dispatch(user, title, body, text_md=body_md, event="renewal")
 
 
-def dispatch(user, subject: str, text_plain: str, text_md: str | None = None,
-             event: str = "reminder") -> list[dict]:
-    """向该用户所有已启用渠道推送。返回每个渠道的结果列表。"""
+def redact_error(err: Exception | str, conf: dict | None = None) -> str:
+    """脱敏渠道异常信息，避免将 Bot Token / Webhook 密钥 / 密码写入响应或日志。"""
+    raw = f"{type(err).__name__}: {err}" if isinstance(err, Exception) else str(err)
+    if isinstance(conf, dict):
+        for k, v in conf.items():
+            if not isinstance(v, str) or len(v) < 6:
+                continue
+            kl = k.lower()
+            if any(s in kl for s in ("token", "secret", "password", "pass", "key", "webhook", "url", "proxy")):
+                raw = raw.replace(v, "***")
+    # 兜底脱敏 URL 中的常见密钥查询参数和 Telegram bot token
+    raw = re.sub(r"bot\d+:[A-Za-z0-9_\-]{10,}", "bot***", raw)
+    raw = re.sub(r"(?i)([?&](?:key|token|secret|access_token|sign|password)=)[^&\s]+", r"\1***", raw)
+    raw = re.sub(r"(?i)(https?://)[^/@\s]+:[^/@\s]+@", r"\1***:***@", raw)
+    return raw[:300]
+
+
+def dispatch(
+    user,
+    subject: str,
+    text_plain: str,
+    text_md: str | None = None,
+    event: str = "reminder",
+    only_channels: set[str] | None = None,
+) -> list[dict]:
+    """向该用户已启用渠道推送（可限定 only_channels）。返回每个渠道的结果列表。"""
     cfg = load_config(user)
     results: list[dict] = []
     for channel in CHANNELS:
+        if only_channels is not None and channel not in only_channels:
+            continue
         conf = cfg.get(channel, {})
         if not conf.get("enabled"):
             continue
@@ -638,5 +663,5 @@ def dispatch(user, subject: str, text_plain: str, text_md: str | None = None,
                 _SENDERS[channel](conf, subject, text_plain)
             results.append({"channel": channel, "ok": True})
         except Exception as e:  # noqa: BLE001
-            results.append({"channel": channel, "ok": False, "error": f"{type(e).__name__}: {e}"})
+            results.append({"channel": channel, "ok": False, "error": redact_error(e, conf)})
     return results
