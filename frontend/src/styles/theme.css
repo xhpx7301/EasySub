@@ -110,4 +110,6 @@ tr:last-child td { border-bottom: none; }
   .row { gap: 10px; }
   /* 表单中的分栏在窄屏下自动占满整行 */
   .row > div[style*="flex"] { flex: 1 1 100% !important; }
+  /* 防止 iOS Safari 聚焦输入框时自动放大页面 */
+  input, select, textarea { font-size: 16px; }
 }

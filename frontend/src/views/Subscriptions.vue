@@ -215,265 +215,278 @@
 
     <!-- 添加/编辑订阅 -->
     <div v-if="showForm" class="modal-mask" @click.self="showForm = false">
-      <div class="modal">
-        <h3>{{ form.id ? t('sub.edit') : t('sub.add') }}</h3>
+      <div class="modal sub-form-modal">
+        <div class="modal-head">
+          <h3>{{ form.id ? t('sub.edit') : t('sub.add') }}</h3>
+          <button type="button" class="icon-btn" :aria-label="t('common.close')" @click="showForm = false">✕</button>
+        </div>
 
-        <div class="block">
-          <div class="block-t">{{ t('sub.secService') }}</div>
-          <div class="row">
-            <div class="icon-pick">
-              <img v-if="isImg(form.icon)" :src="form.icon" class="ico-lg" />
-              <span v-else class="ico-lg emoji">{{ form.icon || '🔖' }}</span>
-            </div>
-            <div style="flex:2;position:relative">
-              <label>{{ t('sub.name') }}</label>
-              <input v-model="form.name" @input="onNameInput" autocomplete="off" />
-              <div v-if="suggestions.length" class="suggest">
-                <div v-for="s in suggestions" :key="s.slug" class="suggest-i" @click="pickService(s)">
-                  <img :src="s.icon" class="ico" /> {{ s.name }}
+        <div class="modal-body">
+          <div class="block">
+            <div class="block-t">{{ t('sub.secService') }}</div>
+            <div class="svc-top">
+              <div class="icon-pick">
+                <img v-if="isImg(form.icon)" :src="form.icon" class="ico-lg" />
+                <span v-else class="ico-lg emoji">{{ form.icon || '🔖' }}</span>
+              </div>
+              <div class="svc-name-wrap">
+                <label>{{ t('sub.name') }}</label>
+                <input v-model="form.name" @input="onNameInput" autocomplete="off" />
+                <div v-if="suggestions.length" class="suggest">
+                  <div v-for="s in suggestions" :key="s.slug" class="suggest-i" @click="pickService(s)">
+                    <img :src="s.icon" class="ico" /> {{ s.name }}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div style="flex:1">
-              <label>{{ t('sub.plan') }}</label>
-              <input v-model="form.plan" :placeholder="t('sub.planPh')" />
-            </div>
-          </div>
-          <label>{{ t('sub.remark') }}</label>
-          <input v-model="form.remark" :placeholder="t('sub.remarkPh')" />
-
-          <!-- VPS：IP 地址（选填） -->
-          <template v-if="isVpsCategory">
-            <label>{{ t('sub.ipLabel') }}</label>
-            <div class="row">
-              <div style="flex:1">
-                <input v-model="form.ipv4" :placeholder="t('sub.ipv4')" />
-              </div>
-              <div style="flex:1">
-                <input v-model="form.ipv6" :placeholder="t('sub.ipv6')" />
+              <div class="svc-plan-wrap">
+                <label>{{ t('sub.plan') }}</label>
+                <input v-model="form.plan" :placeholder="t('sub.planPh')" />
               </div>
             </div>
-          </template>
+            <label>{{ t('sub.remark') }}</label>
+            <input v-model="form.remark" :placeholder="t('sub.remarkPh')" />
 
-          <button class="btn ghost sm" style="margin-top:8px" @click="openBrowser">📚 {{ t('sub.browse') }}</button>
-
-          <details class="icon-lib">
-            <summary>{{ t('sub.icon') }} — {{ t('sub.iconLibrary') }} / URL / {{ t('sub.uploadIcon') }}</summary>
-            <input v-model="form.icon" placeholder="🔖 emoji / /static/... / https://..." style="margin:8px 0" />
-            <div class="row" style="margin-bottom:8px">
-              <input v-model="iconUrl" :placeholder="t('sub.iconUrl')" style="flex:1" />
-              <button class="btn ghost sm" @click="importIconUrl">{{ t('sub.iconUrlImport') }}</button>
-              <label class="btn ghost sm" style="width:auto">{{ t('sub.uploadIcon') }}
-                <input type="file" accept="image/*" hidden @change="uploadIcon" />
-              </label>
-            </div>
-            <input v-model="iconSearch" class="icon-search" :placeholder="t('sub.iconSearchPh')" type="search" />
-            <div class="lib-grid">
-              <img v-for="it in filteredIconLib" :key="it.slug" :src="it.icon" :title="`${it.name} · ${it.domain}`"
-                   loading="lazy" decoding="async" class="lib-ico" @click="form.icon = it.icon" />
-            </div>
-            <div v-if="!filteredIconLib.length" class="muted icon-empty">{{ t('sub.iconSearchEmpty') }}</div>
-          </details>
-        </div>
-
-        <div class="block">
-          <div class="block-t">{{ t('sub.secPrice') }}</div>
-          <div class="row">
-            <div style="flex:1">
-              <label>{{ t('sub.amount') }}</label>
-              <input v-model.number="form.amount" type="number" step="0.01" />
-            </div>
-            <div style="flex:1">
-              <label>{{ t('sub.currency') }}</label>
-              <select v-model="form.currency">
-                <option v-for="c in currencies" :key="c.code" :value="c.code">{{ c.code }} {{ c.symbol }}</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="block">
-          <div class="block-t">{{ t('sub.secBilling') }}</div>
-          <div class="row">
-            <div style="flex:1">
-              <label>{{ t('sub.billingType') }}</label>
-              <select v-model="form.billing_type">
-                <option value="recurring">{{ t('sub.recurring') }}</option>
-                <option value="one_time">{{ t('sub.oneTime') }}</option>
-              </select>
-            </div>
-            <template v-if="form.billing_type === 'recurring'">
-              <div style="flex:1">
-                <label>{{ t('sub.cycleCount') }}</label>
-                <input v-model.number="form.cycle_count" type="number" min="1" />
-              </div>
-              <div style="flex:1">
-                <label>{{ t('sub.cycle') }}</label>
-                <select v-model="form.cycle">
-                  <option value="day">{{ t('sub.day') }}</option>
-                  <option value="week">{{ t('sub.week') }}</option>
-                  <option value="month">{{ t('sub.month') }}</option>
-                  <option value="year">{{ t('sub.year') }}</option>
-                </select>
+            <!-- VPS：IP 地址（选填） -->
+            <template v-if="isVpsCategory">
+              <label>{{ t('sub.ipLabel') }}</label>
+              <div class="form-2col">
+                <div>
+                  <input v-model="form.ipv4" :placeholder="t('sub.ipv4')" />
+                </div>
+                <div>
+                  <input v-model="form.ipv6" :placeholder="t('sub.ipv6')" />
+                </div>
               </div>
             </template>
-          </div>
-          <div class="row">
-            <div style="flex:1">
-              <label>{{ t('sub.startDate') }}</label>
-              <input v-model="form.start_date" type="date" />
-            </div>
-            <div style="flex:1" v-if="form.billing_type === 'recurring'">
-              <div class="field-title">
-                <label>{{ t('sub.nextRenewal') }}</label>
-                <button class="icon-btn" type="button" :title="t('sub.calcNextTip')" @click="recomputeNext">
-                  <span v-html="icon('calendar')"></span>
-                </button>
+
+            <button type="button" class="btn ghost sm" style="margin-top:8px" @click="openBrowser">📚 {{ t('sub.browse') }}</button>
+
+            <details class="icon-lib">
+              <summary>{{ t('sub.icon') }} — {{ t('sub.iconLibrary') }} / URL / {{ t('sub.uploadIcon') }}</summary>
+              <input v-model="form.icon" placeholder="🔖 emoji / /static/... / https://..." style="margin:8px 0" />
+              <div class="row icon-url-row" style="margin-bottom:8px">
+                <input v-model="iconUrl" :placeholder="t('sub.iconUrl')" style="flex:1;min-width:140px" />
+                <button type="button" class="btn ghost sm" @click="importIconUrl">{{ t('sub.iconUrlImport') }}</button>
+                <label class="btn ghost sm" style="width:auto;margin:0;cursor:pointer">{{ t('sub.uploadIcon') }}
+                  <input type="file" accept="image/*" hidden @change="uploadIcon" />
+                </label>
               </div>
-              <input v-model="form.next_renewal_date" type="date" />
+              <input v-model="iconSearch" class="icon-search" :placeholder="t('sub.iconSearchPh')" type="search" />
+              <div class="lib-grid">
+                <img v-for="it in filteredIconLib" :key="it.slug" :src="it.icon" :title="`${it.name} · ${it.domain}`"
+                     loading="lazy" decoding="async" class="lib-ico" @click="form.icon = it.icon" />
+              </div>
+              <div v-if="!filteredIconLib.length" class="muted icon-empty">{{ t('sub.iconSearchEmpty') }}</div>
+            </details>
+          </div>
+
+          <div class="block">
+            <div class="block-t">{{ t('sub.secPrice') }}</div>
+            <div class="form-2col">
+              <div>
+                <label>{{ t('sub.amount') }}</label>
+                <input v-model.number="form.amount" type="number" step="0.01" inputmode="decimal" />
+              </div>
+              <div>
+                <label>{{ t('sub.currency') }}</label>
+                <select v-model="form.currency">
+                  <option v-for="c in currencies" :key="c.code" :value="c.code">{{ c.code }} {{ c.symbol }}</option>
+                </select>
+              </div>
             </div>
           </div>
-          <div class="row" v-if="form.billing_type === 'recurring'">
-            <div class="reminder-rules">
-              <div class="rules-head">
+
+          <div class="block">
+            <div class="block-t">{{ t('sub.secBilling') }}</div>
+            <div class="form-3col">
+              <div>
+                <label>{{ t('sub.billingType') }}</label>
+                <select v-model="form.billing_type">
+                  <option value="recurring">{{ t('sub.recurring') }}</option>
+                  <option value="one_time">{{ t('sub.oneTime') }}</option>
+                </select>
+              </div>
+              <template v-if="form.billing_type === 'recurring'">
                 <div>
-                  <div class="field-title"><label>{{ t('sub.reminderRules') }}</label></div>
-                  <div class="muted rules-hint">{{ t('sub.reminderRulesHint') }}</div>
+                  <label>{{ t('sub.cycleCount') }}</label>
+                  <input v-model.number="form.cycle_count" type="number" min="1" inputmode="numeric" />
                 </div>
-                <div class="rules-actions">
-                  <button class="btn ghost sm" type="button" @click="applyReminderPreset">{{ t('sub.applyPreset') }}</button>
-                  <button class="icon-btn" type="button" :title="t('sub.addRule')" @click="addReminderRule">
-                    <span v-html="icon('plus')"></span>
+                <div>
+                  <label>{{ t('sub.cycle') }}</label>
+                  <select v-model="form.cycle">
+                    <option value="day">{{ t('sub.day') }}</option>
+                    <option value="week">{{ t('sub.week') }}</option>
+                    <option value="month">{{ t('sub.month') }}</option>
+                    <option value="year">{{ t('sub.year') }}</option>
+                  </select>
+                </div>
+              </template>
+            </div>
+            <div class="form-2col">
+              <div>
+                <label>{{ t('sub.startDate') }}</label>
+                <input v-model="form.start_date" type="date" />
+              </div>
+              <div v-if="form.billing_type === 'recurring'">
+                <div class="field-title" style="margin:10px 0 4px">
+                  <label>{{ t('sub.nextRenewal') }}</label>
+                  <button class="icon-btn sm-btn" type="button" :title="t('sub.calcNextTip')" @click="recomputeNext">
+                    <span v-html="icon('calendar')"></span>
                   </button>
                 </div>
+                <input v-model="form.next_renewal_date" type="date" />
               </div>
-              <div v-for="(rule, index) in form.reminder_rules" :key="rule.id" class="rule-row">
-                <label class="rule-enabled"><input v-model="rule.enabled" type="checkbox" /> {{ t('sub.enabled') }}</label>
-                <select v-model="rule.timing" @change="normalizeRule(rule)">
-                  <option value="before">{{ t('sub.beforeDue') }}</option>
-                  <option value="due">{{ t('sub.onDue') }}</option>
-                  <option value="after" :disabled="form.auto_renew">{{ t('sub.afterDue') }}</option>
-                </select>
-                <input v-model.number="rule.value" type="number" min="1" :disabled="rule.timing === 'due'" @change="normalizeRule(rule)" />
-                <select v-model="rule.unit" :disabled="rule.timing === 'due'" @change="normalizeRule(rule)">
-                  <option value="day">{{ t('sub.days') }}</option>
-                  <option value="hour">{{ t('sub.hours') }}</option>
-                </select>
-                <button class="icon-btn danger-icon" type="button" :title="t('sub.removeRule')" @click="removeReminderRule(index)">
-                  <span v-html="icon('trash')"></span>
-                </button>
+            </div>
+            <div class="row" v-if="form.billing_type === 'recurring'" style="margin-top:10px">
+              <div class="reminder-rules">
+                <div class="rules-head">
+                  <div>
+                    <div class="field-title"><label>{{ t('sub.reminderRules') }}</label></div>
+                    <div class="muted rules-hint">{{ t('sub.reminderRulesHint') }}</div>
+                  </div>
+                  <div class="rules-actions">
+                    <button class="btn ghost sm" type="button" @click="applyReminderPreset">{{ t('sub.applyPreset') }}</button>
+                    <button class="icon-btn" type="button" :title="t('sub.addRule')" @click="addReminderRule">
+                      <span v-html="icon('plus')"></span>
+                    </button>
+                  </div>
+                </div>
+                <div v-for="(rule, index) in form.reminder_rules" :key="rule.id" class="rule-row">
+                  <label class="rule-enabled"><input v-model="rule.enabled" type="checkbox" /> {{ t('sub.enabled') }}</label>
+                  <select v-model="rule.timing" @change="normalizeRule(rule)">
+                    <option value="before">{{ t('sub.beforeDue') }}</option>
+                    <option value="due">{{ t('sub.onDue') }}</option>
+                    <option value="after" :disabled="form.auto_renew">{{ t('sub.afterDue') }}</option>
+                  </select>
+                  <input v-model.number="rule.value" type="number" min="1" inputmode="numeric" :disabled="rule.timing === 'due'" @change="normalizeRule(rule)" />
+                  <select v-model="rule.unit" :disabled="rule.timing === 'due'" @change="normalizeRule(rule)">
+                    <option value="day">{{ t('sub.days') }}</option>
+                    <option value="hour">{{ t('sub.hours') }}</option>
+                  </select>
+                  <button class="icon-btn danger-icon" type="button" :title="t('sub.removeRule')" @click="removeReminderRule(index)">
+                    <span v-html="icon('trash')"></span>
+                  </button>
+                </div>
+                <div v-if="form.auto_renew && form.reminder_rules.some((rule) => rule.timing === 'after')" class="muted rules-hint">{{ t('sub.afterAutoHint') }}</div>
               </div>
-              <div v-if="form.auto_renew && form.reminder_rules.some((rule) => rule.timing === 'after')" class="muted rules-hint">{{ t('sub.afterAutoHint') }}</div>
             </div>
-            <div style="flex:1">
-              <label>{{ t('sub.active') }}</label>
-              <select v-model="form.is_active"><option :value="true">✓</option><option :value="false">✗</option></select>
-            </div>
-            <div style="flex:1">
-              <label>{{ t('sub.autoRenew') }} <span class="auto-tip" :title="t('sub.autoRenewTip')">?</span></label>
-              <select v-model="form.auto_renew"><option :value="true">✓</option><option :value="false">✗</option></select>
-            </div>
-          </div>
-        </div>
-
-        <div class="block" v-if="form.billing_type === 'recurring'">
-          <div class="block-t">{{ t('sub.secTrialCard') }}</div>
-          <div class="row">
-            <div style="flex:1"><label>{{ t('sub.trialEnd') }}</label><input type="date" v-model="form.trial_end" /></div>
-            <div style="flex:1"><label>{{ t('sub.cancelBy') }}</label><input type="date" v-model="form.cancel_by" /></div>
-          </div>
-          <div class="row">
-            <div style="flex:1"><label>{{ t('sub.cardLast4') }}</label><input v-model="form.card_last4" maxlength="4" placeholder="4242" /></div>
-            <div style="flex:1"><label>{{ t('sub.cardExpiry') }}</label><input v-model="form.card_expiry" placeholder="MM/YY" /></div>
-          </div>
-        </div>
-
-        <div class="block">
-          <div class="block-t">{{ t('sub.secClassify') }}</div>
-          <div class="row">
-            <div style="flex:1">
-              <label>{{ t('sub.category') }}</label>
-              <select v-model="form.category_id">
-                <option :value="null">—</option>
-                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.icon }} {{ c.name }}</option>
-              </select>
-            </div>
-            <div style="flex:1">
-              <label>{{ t('sub.payment') }}</label>
-              <select v-model="form.payment_method_id">
-                <option :value="null">—</option>
-                <option v-for="p in methods" :key="p.id" :value="p.id">{{ p.icon }} {{ p.name }}</option>
-              </select>
+            <div class="form-2col" v-if="form.billing_type === 'recurring'">
+              <div>
+                <label>{{ t('sub.active') }}</label>
+                <select v-model="form.is_active"><option :value="true">✓</option><option :value="false">✗</option></select>
+              </div>
+              <div>
+                <label>{{ t('sub.autoRenew') }} <span class="auto-tip" :title="t('sub.autoRenewTip')">?</span></label>
+                <select v-model="form.auto_renew"><option :value="true">✓</option><option :value="false">✗</option></select>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="block">
-          <div class="block-t">{{ t('sub.secFamily') }}</div>
-          <div class="chips">
-            <span v-for="(m, i) in form.family_members" :key="i" class="chip">
-              {{ m }} <a href="#" @click.prevent="form.family_members.splice(i, 1)">✕</a>
-            </span>
+          <div class="block" v-if="form.billing_type === 'recurring'">
+            <div class="block-t">{{ t('sub.secTrialCard') }}</div>
+            <div class="form-2col">
+              <div><label>{{ t('sub.trialEnd') }}</label><input type="date" v-model="form.trial_end" /></div>
+              <div><label>{{ t('sub.cancelBy') }}</label><input type="date" v-model="form.cancel_by" /></div>
+            </div>
+            <div class="form-2col">
+              <div><label>{{ t('sub.cardLast4') }}</label><input v-model="form.card_last4" maxlength="4" inputmode="numeric" placeholder="4242" /></div>
+              <div><label>{{ t('sub.cardExpiry') }}</label><input v-model="form.card_expiry" placeholder="MM/YY" /></div>
+            </div>
           </div>
-          <div class="row">
-            <input v-model="newMember" :placeholder="t('sub.familyPh')" @keyup.enter="addMember" style="flex:1" />
-            <button class="btn ghost sm" @click="addMember">{{ t('sub.familyAdd') }}</button>
+
+          <div class="block">
+            <div class="block-t">{{ t('sub.secClassify') }}</div>
+            <div class="form-2col">
+              <div>
+                <label>{{ t('sub.category') }}</label>
+                <select v-model="form.category_id">
+                  <option :value="null">—</option>
+                  <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.icon }} {{ c.name }}</option>
+                </select>
+              </div>
+              <div>
+                <label>{{ t('sub.payment') }}</label>
+                <select v-model="form.payment_method_id">
+                  <option :value="null">—</option>
+                  <option v-for="p in methods" :key="p.id" :value="p.id">{{ p.icon }} {{ p.name }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="block-t">{{ t('sub.secFamily') }}</div>
+            <div class="chips" v-if="form.family_members.length">
+              <span v-for="(m, i) in form.family_members" :key="i" class="chip">
+                {{ m }} <a href="#" @click.prevent="form.family_members.splice(i, 1)">✕</a>
+              </span>
+            </div>
+            <div class="row" style="align-items:center">
+              <input v-model="newMember" :placeholder="t('sub.familyPh')" @keyup.enter="addMember" style="flex:1;min-width:0" />
+              <button type="button" class="btn ghost sm" @click="addMember">{{ t('sub.familyAdd') }}</button>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="block-t">{{ t('sub.secBundle') }}</div>
+            <div class="row radio-row">
+              <label class="rb"><input type="radio" value="none" v-model="bundleMode" /> {{ t('sub.bundleNone') }}</label>
+              <label class="rb"><input type="radio" value="join" v-model="bundleMode" /> {{ t('sub.bundleJoin') }}</label>
+              <label class="rb"><input type="radio" value="create" v-model="bundleMode" /> {{ t('sub.bundleCreate') }}</label>
+            </div>
+            <select v-if="bundleMode === 'join'" v-model="form.bundle_id" style="margin-top:8px">
+              <option :value="null">—</option>
+              <option v-for="b in bundles" :key="b.id" :value="b.id">{{ b.name }}</option>
+            </select>
+            <input v-if="bundleMode === 'create'" v-model="newBundleName" :placeholder="t('sub.bundleName')" style="margin-top:8px" />
+          </div>
+
+          <div class="block">
+            <div class="block-t">{{ t('sub.secExtra') }}</div>
+            <label>{{ t('sub.website') }}</label>
+            <input v-model="form.url" type="url" placeholder="https://..." />
+            <label>{{ t('sub.notes') }}</label>
+            <textarea v-model="form.notes" rows="2"></textarea>
+          </div>
+
+          <div class="block">
+            <div class="block-t">{{ t('sub.secCalendar') }}</div>
+            <label class="rb"><input type="checkbox" v-model="form.show_in_calendar" /> {{ t('sub.showInCalendar') }}</label>
           </div>
         </div>
 
-        <div class="block">
-          <div class="block-t">{{ t('sub.secBundle') }}</div>
-          <div class="row radio-row">
-            <label class="rb"><input type="radio" value="none" v-model="bundleMode" /> {{ t('sub.bundleNone') }}</label>
-            <label class="rb"><input type="radio" value="join" v-model="bundleMode" /> {{ t('sub.bundleJoin') }}</label>
-            <label class="rb"><input type="radio" value="create" v-model="bundleMode" /> {{ t('sub.bundleCreate') }}</label>
+        <div class="modal-foot">
+          <p v-if="formErr" class="err" style="margin:0 0 8px">{{ formErr }}</p>
+          <div class="modal-foot-btns">
+            <button type="button" class="btn ghost" @click="showForm = false">{{ t('sub.cancel') }}</button>
+            <button type="button" class="btn" :disabled="saving" @click="save">{{ t('sub.save') }}</button>
           </div>
-          <select v-if="bundleMode === 'join'" v-model="form.bundle_id">
-            <option :value="null">—</option>
-            <option v-for="b in bundles" :key="b.id" :value="b.id">{{ b.name }}</option>
-          </select>
-          <input v-if="bundleMode === 'create'" v-model="newBundleName" :placeholder="t('sub.bundleName')" />
-        </div>
-
-        <div class="block">
-          <div class="block-t">{{ t('sub.secExtra') }}</div>
-          <label>{{ t('sub.website') }}</label>
-          <input v-model="form.url" placeholder="https://..." />
-          <label>{{ t('sub.notes') }}</label>
-          <textarea v-model="form.notes" rows="2"></textarea>
-        </div>
-
-        <div class="block">
-          <div class="block-t">{{ t('sub.secCalendar') }}</div>
-          <label class="rb"><input type="checkbox" v-model="form.show_in_calendar" /> {{ t('sub.showInCalendar') }}</label>
-        </div>
-
-        <p v-if="formErr" class="err">{{ formErr }}</p>
-        <div class="row" style="justify-content:flex-end;margin-top:16px">
-          <button class="btn ghost" @click="showForm = false">{{ t('sub.cancel') }}</button>
-          <button class="btn" :disabled="saving" @click="save">{{ t('sub.save') }}</button>
         </div>
       </div>
     </div>
 
     <!-- 按分类浏览服务库 -->
     <div v-if="showBrowser" class="modal-mask browser" @click.self="showBrowser = false">
-      <div class="modal">
-        <div class="head" style="margin-bottom:10px">
-          <h3 style="margin:0">📚 {{ t('sub.browseTitle') }}</h3>
-          <button class="btn ghost sm" @click="showBrowser = false">{{ t('common.close') }}</button>
+      <div class="modal sub-form-modal">
+        <div class="modal-head">
+          <h3>📚 {{ t('sub.browseTitle') }}</h3>
+          <button type="button" class="btn ghost sm" @click="showBrowser = false">{{ t('common.close') }}</button>
         </div>
-        <p class="muted" style="font-size:13px;margin-top:0">{{ t('sub.pickHint') }}</p>
-        <input v-model="browserQ" :placeholder="t('sub.searchPh')" style="margin-bottom:12px" />
-        <div v-for="g in groupedLib" :key="g.key" class="lib-group">
-          <div class="lib-group-t">{{ g.label }}</div>
-          <div class="svc-grid">
-            <button v-for="s in g.items" :key="s.slug" class="svc" @click="pickFromBrowser(s)">
-              <img :src="s.icon" loading="lazy" decoding="async" class="svc-ico" /> <span>{{ s.name }}</span>
-            </button>
+        <div class="browser-search">
+          <p class="muted" style="font-size:13px;margin:0 0 8px">{{ t('sub.pickHint') }}</p>
+          <input v-model="browserQ" :placeholder="t('sub.searchPh')" type="search" />
+        </div>
+        <div class="modal-body">
+          <div v-for="g in groupedLib" :key="g.key" class="lib-group">
+            <div class="lib-group-t">{{ g.label }}</div>
+            <div class="svc-grid">
+              <button v-for="s in g.items" :key="s.slug" class="svc" @click="pickFromBrowser(s)">
+                <img :src="s.icon" loading="lazy" decoding="async" class="svc-ico" /> <span>{{ s.name }}</span>
+              </button>
+            </div>
           </div>
+          <p v-if="!groupedLib.length" class="muted">{{ t('reports.empty') }}</p>
         </div>
-        <p v-if="!groupedLib.length" class="muted">{{ t('reports.empty') }}</p>
       </div>
     </div>
 
@@ -1251,6 +1264,22 @@ h1 { margin-top: 0; }
 .opt-d { font-size: 12px; margin-top: 3px; }
 
 /* 表单内复用样式 */
+.sub-form-modal { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+.modal-head h3 { margin: 0; font-size: 17px; }
+.modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; -webkit-overflow-scrolling: touch; }
+.modal-foot { padding: 12px 20px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+.modal-foot-btns { display: flex; justify-content: flex-end; gap: 10px; }
+.browser-search { padding: 12px 20px 0; flex-shrink: 0; }
+
+.svc-top { display: grid; grid-template-columns: 44px minmax(0, 2fr) minmax(0, 1fr); gap: 10px; align-items: end; }
+.svc-name-wrap { position: relative; min-width: 0; }
+.svc-plan-wrap { min-width: 0; }
+.form-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.form-2col > div, .form-3col > div { min-width: 0; }
+.form-3col { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+
 .block { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
 .block-t { font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 6px; }
 .reminder-rules { flex: 1 1 100%; min-width: 0; }
@@ -1313,11 +1342,22 @@ h1 { margin-top: 0; }
   .sc-name { font-size: 16px; }
   .sc-amount { font-size: 24px; margin: 10px 0 6px; }
   .sc-acts { flex-wrap: wrap; }
+  .sub-form-modal { max-height: 92dvh; }
+  .modal-head { padding: 14px 16px; }
+  .modal-body { padding: 12px 14px; }
+  .modal-foot { padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); }
+  .modal-foot-btns .btn { flex: 1; }
+  .browser-search { padding: 10px 14px 0; }
+  .svc-top { grid-template-columns: 44px minmax(0, 1fr); gap: 8px 10px; }
+  .svc-plan-wrap { grid-column: 1 / -1; }
+  .form-3col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-3col > div:first-child { grid-column: 1 / -1; }
+  .lib-grid { grid-template-columns: repeat(auto-fill, 38px); gap: 8px; }
+  .lib-ico { width: 38px; height: 38px; padding: 4px; }
   .rules-head { flex-direction: column; align-items: stretch; }
   .reminder-rules { min-width: 100%; }
-  .rule-row { grid-template-columns: 1fr 1fr 32px; }
-  .rule-enabled { grid-column: 1 / -1; }
-  .rule-row > :nth-child(4) { grid-column: 1 / 3; }
-  .rule-row > .icon-btn { grid-column: 3; grid-row: 3; }
+  .rule-row { grid-template-columns: 1.2fr 0.75fr 0.95fr; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+  .rule-enabled { grid-column: 1 / 3; }
+  .rule-row > .icon-btn { grid-column: 3; grid-row: 1; justify-self: end; }
 }
 </style>
