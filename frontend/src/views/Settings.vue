@@ -604,18 +604,18 @@ h1 { margin-top: 0; }
 .cal-url { width: 100%; margin-top: 10px; font-family: monospace; font-size: 12px; padding: 8px 10px;
   border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); }
 .bk-list { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
-.bk-list li { display: flex; justify-content: space-between; gap: 12px; font-size: 13px;
-  padding: 8px 10px; background: var(--surface-2); border-radius: 8px; }
+.bk-list li { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 10px; font-size: 13px;
+  padding: 8px 10px; background: var(--surface-2); border-radius: 8px; word-break: break-all; }
 .bk-list .muted { font-size: 12px; }
-.sec-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; }
+.sec-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 8px 0; }
 .twofa-box { display: flex; gap: 16px; align-items: flex-start; margin: 10px 0; flex-wrap: wrap; }
 .twofa-box .qr { width: 150px; height: 150px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
-.twofa-r { flex: 1; min-width: 200px; }
+.twofa-r { flex: 1; min-width: min(200px, 100%); }
 .secret { display: inline-block; background: var(--surface-2); padding: 4px 8px; border-radius: 6px; font-size: 13px; word-break: break-all; }
 .upd-box { margin-top: 12px; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border); }
-.upd-box code { display: block; background: var(--surface); padding: 8px 10px; border-radius: 8px; font-size: 12px; word-break: break-all; }
-.two { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
-.sect { margin-bottom: 16px; }
+.upd-box code { display: block; background: var(--surface); padding: 8px 10px; border-radius: 8px; font-size: 12px; word-break: break-all; white-space: pre-wrap; }
+.two { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 16px; }
+.sect { margin-bottom: 16px; min-width: 0; }
 .sect h3 { margin-top: 0; }
 hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .ok { color: var(--success); font-size: 13px; }
@@ -628,14 +628,18 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .theme-picker { display: flex; gap: 10px; margin: 6px 0 4px; }
 .th { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; padding: 0; }
 .th.on { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-.rate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-.rate { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface-2);
+.rate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr)); gap: 10px; }
+.rate { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface-2); min-width: 0;
   transition: transform .15s ease, border-color .15s ease; }
 .rate:hover { transform: translateY(-2px); border-color: var(--primary); }
 .rate-code { font-weight: 600; font-size: 14px; }
-.rate-val { font-size: 13px; color: var(--text); margin-top: 3px; }
-.sys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-.si { display: flex; flex-direction: column; gap: 3px; padding: 12px; background: var(--surface-2); border-radius: 10px; font-size: 14px; }
+.rate-val { font-size: 13px; color: var(--text); margin-top: 3px; word-break: break-word; }
+.sys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 12px; }
+.si { display: flex; flex-direction: column; gap: 3px; padding: 12px; background: var(--surface-2); border-radius: 10px; font-size: 14px; min-width: 0; word-break: break-word; }
 .si .muted { font-size: 12px; }
-@media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .two { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) {
+  .rate-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sys-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+}
 </style>

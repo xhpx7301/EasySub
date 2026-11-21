@@ -72,63 +72,71 @@
     <div v-else-if="active === 'insights'">
       <div class="card sect">
         <h3>🏆 {{ t('reports.ranking') }}</h3>
-        <table>
-          <thead><tr><th>#</th><th>{{ t('sub.name') }}</th><th>{{ t('reports.category') }}</th><th>{{ t('reports.monthly') }}</th></tr></thead>
-          <tbody>
-            <tr v-for="(s, i) in ranking" :key="s.id">
-              <td class="rk">{{ i + 1 }}</td>
-              <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i v-if="s.plan" class="nm-sub">{{ s.plan }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
-              <td class="muted">{{ catName(s.category_id) }}</td>
-              <td>{{ cur }} {{ (s.amount_in_base || 0).toFixed(2) }}</td>
-            </tr>
-            <tr v-if="!ranking.length"><td colspan="4" class="muted">{{ t('reports.empty') }}</td></tr>
-          </tbody>
-        </table>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>{{ t('sub.name') }}</th><th>{{ t('reports.category') }}</th><th>{{ t('reports.monthly') }}</th></tr></thead>
+            <tbody>
+              <tr v-for="(s, i) in ranking" :key="s.id">
+                <td class="rk">{{ i + 1 }}</td>
+                <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i v-if="s.plan" class="nm-sub">{{ s.plan }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
+                <td class="muted">{{ catName(s.category_id) }}</td>
+                <td>{{ cur }} {{ (s.amount_in_base || 0).toFixed(2) }}</td>
+              </tr>
+              <tr v-if="!ranking.length"><td colspan="4" class="muted">{{ t('reports.empty') }}</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div class="grid two">
         <div class="card sect">
           <h3>⏰ {{ t('reports.upcoming') }}</h3>
-          <table>
-            <tbody>
-              <tr v-for="s in upcoming" :key="s.id">
-                <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i class="nm-sub">{{ s.plan ? s.plan + ' · ' : '' }}{{ catName(s.category_id) }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
-                <td class="muted">{{ s.next_renewal_date }}</td>
-                <td>{{ s.amount.toFixed(2) }} {{ s.currency }}</td>
-              </tr>
-              <tr v-if="!upcoming.length"><td colspan="3" class="muted">{{ t('reports.empty') }}</td></tr>
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <tbody>
+                <tr v-for="s in upcoming" :key="s.id">
+                  <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i class="nm-sub">{{ s.plan ? s.plan + ' · ' : '' }}{{ catName(s.category_id) }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
+                  <td class="muted">{{ s.next_renewal_date }}</td>
+                  <td>{{ s.amount.toFixed(2) }} {{ s.currency }}</td>
+                </tr>
+                <tr v-if="!upcoming.length"><td colspan="3" class="muted">{{ t('reports.empty') }}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div class="card sect">
           <h3>⚠️ {{ t('reports.expired') }}</h3>
-          <table>
-            <tbody>
-              <tr v-for="s in expired" :key="s.id">
-                <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i class="nm-sub">{{ s.plan ? s.plan + ' · ' : '' }}{{ catName(s.category_id) }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
-                <td class="danger">{{ s.next_renewal_date }}</td>
-                <td>{{ s.amount.toFixed(2) }} {{ s.currency }}</td>
-              </tr>
-              <tr v-if="!expired.length"><td colspan="3" class="muted">{{ t('reports.empty') }}</td></tr>
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <tbody>
+                <tr v-for="s in expired" :key="s.id">
+                  <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i class="nm-sub">{{ s.plan ? s.plan + ' · ' : '' }}{{ catName(s.category_id) }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
+                  <td class="danger">{{ s.next_renewal_date }}</td>
+                  <td>{{ s.amount.toFixed(2) }} {{ s.currency }}</td>
+                </tr>
+                <tr v-if="!expired.length"><td colspan="3" class="muted">{{ t('reports.empty') }}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       <div class="card sect">
         <h3>♾️ {{ t('reports.oneTime') }}</h3>
-        <table>
-          <thead><tr><th>{{ t('sub.name') }}</th><th>{{ t('reports.category') }}</th><th>{{ t('sub.amount') }}</th><th>{{ t('sub.startDate') }}</th></tr></thead>
-          <tbody>
-            <tr v-for="s in oneTime" :key="s.id">
-              <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i v-if="s.plan" class="nm-sub">{{ s.plan }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
-              <td class="muted">{{ catName(s.category_id) }}</td>
-              <td>{{ s.amount.toFixed(2) }} {{ s.currency }}</td>
-              <td class="muted">{{ s.start_date }}</td>
-            </tr>
-            <tr v-if="!oneTime.length"><td colspan="4" class="muted">{{ t('reports.empty') }}</td></tr>
-          </tbody>
-        </table>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>{{ t('sub.name') }}</th><th>{{ t('reports.category') }}</th><th>{{ t('sub.amount') }}</th><th>{{ t('sub.startDate') }}</th></tr></thead>
+            <tbody>
+              <tr v-for="s in oneTime" :key="s.id">
+                <td><span class="nm"><img v-if="isImg(s.icon)" :src="s.icon" class="nm-ico" /><span v-else class="nm-emoji">{{ emojiOf(s) }}</span><span class="nm-txt"><b>{{ s.name }}</b><i v-if="s.plan" class="nm-sub">{{ s.plan }}</i><i v-if="s.remark" class="nm-remark">📝 {{ s.remark }}</i></span></span></td>
+                <td class="muted">{{ catName(s.category_id) }}</td>
+                <td>{{ s.amount.toFixed(2) }} {{ s.currency }}</td>
+                <td class="muted">{{ s.start_date }}</td>
+              </tr>
+              <tr v-if="!oneTime.length"><td colspan="4" class="muted">{{ t('reports.empty') }}</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -139,29 +147,33 @@
           <h3>🔁 {{ t('reports.recurringSubs') }}
             <span class="muted total">{{ cur }} {{ (detail.recurring_monthly_total || 0).toFixed(2) }} / {{ t('reports.monthly') }}</span>
           </h3>
-          <table>
-            <thead><tr><th>{{ t('reports.category') }}</th><th>{{ t('reports.count') }}</th><th>{{ t('reports.monthly') }}</th></tr></thead>
-            <tbody>
-              <tr v-for="r in detail.recurring" :key="r.category">
-                <td>{{ r.category }}</td><td>{{ r.count }}</td><td>{{ cur }} {{ r.monthly.toFixed(2) }}</td>
-              </tr>
-              <tr v-if="!detail.recurring?.length"><td colspan="3" class="muted">{{ t('reports.empty') }}</td></tr>
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>{{ t('reports.category') }}</th><th>{{ t('reports.count') }}</th><th>{{ t('reports.monthly') }}</th></tr></thead>
+              <tbody>
+                <tr v-for="r in detail.recurring" :key="r.category">
+                  <td>{{ r.category }}</td><td>{{ r.count }}</td><td>{{ cur }} {{ r.monthly.toFixed(2) }}</td>
+                </tr>
+                <tr v-if="!detail.recurring?.length"><td colspan="3" class="muted">{{ t('reports.empty') }}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div class="card sect">
           <h3>♾️ {{ t('reports.permanentBuy') }}
             <span class="muted total">{{ cur }} {{ (detail.one_time_total || 0).toFixed(2) }}</span>
           </h3>
-          <table>
-            <thead><tr><th>{{ t('reports.category') }}</th><th>{{ t('reports.count') }}</th><th>{{ t('reports.amount') }}</th></tr></thead>
-            <tbody>
-              <tr v-for="r in detail.one_time" :key="r.category">
-                <td>{{ r.category }}</td><td>{{ r.count }}</td><td>{{ cur }} {{ r.total.toFixed(2) }}</td>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>{{ t('reports.category') }}</th><th>{{ t('reports.count') }}</th><th>{{ t('reports.amount') }}</th></tr></thead>
+              <tbody>
+                <tr v-for="r in detail.one_time" :key="r.category">
+                  <td>{{ r.category }}</td><td>{{ r.count }}</td><td>{{ cur }} {{ r.total.toFixed(2) }}</td>
               </tr>
               <tr v-if="!detail.one_time?.length"><td colspan="3" class="muted">{{ t('reports.empty') }}</td></tr>
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>
@@ -291,8 +303,8 @@ h1 { margin-top: 0; }
 .seg button { border: none; background: transparent; padding: 6px 14px; border-radius: 6px;
   cursor: pointer; color: var(--text-soft); white-space: nowrap; }
 .seg button.on { background: var(--primary); color: #fff; }
-.two { grid-template-columns: 1fr 1fr; }
-.sect { margin-bottom: 16px; }
+.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sect { margin-bottom: 16px; min-width: 0; }
 .sect h3 { margin-top: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .total { font-size: 13px; font-weight: 500; }
 .danger { color: var(--danger); }
@@ -312,10 +324,10 @@ h1 { margin-top: 0; }
 .pay-remark { color: var(--primary); }
 
 /* KPI */
-.kpis { grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; }
-.kpi { position: relative; overflow: hidden; }
+.kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; }
+.kpi { position: relative; overflow: hidden; min-width: 0; }
 .kpi-l { font-size: 13px; color: var(--text-soft); }
-.kpi-v { font-size: 23px; font-weight: 700; margin-top: 6px; letter-spacing: -.02em; }
+.kpi-v { font-size: 22px; font-weight: 700; margin-top: 6px; letter-spacing: -.02em; word-break: break-word; }
 .kpi::after { content: ''; position: absolute; right: -20px; top: -20px; width: 70px; height: 70px;
   border-radius: 50%; opacity: .15; }
 .k1::after { background: var(--primary); }
@@ -354,9 +366,21 @@ h1 { margin-top: 0; }
 .pay-d { font-size: 12px; }
 .pay-amt { font-weight: 600; font-size: 14px; }
 
+@media (max-width: 860px) {
+  .two { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 720px) {
-  .kpis { grid-template-columns: 1fr 1fr; }
-  .two { grid-template-columns: 1fr; }
-  .bar-row { grid-template-columns: 100px 1fr 90px; }
+  .rep-head { flex-wrap: wrap; }
+  .seg { display: flex; width: 100%; }
+  .seg button { flex: 1 1 auto; padding: 6px 8px; font-size: 13px; text-align: center; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kpi { padding: 14px; }
+  .kpi-v { font-size: 17px; }
+  .donut-wrap { justify-content: center; }
+  .legend { min-width: 100%; }
+  .bar-row { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; }
+  .bar-track { grid-column: 1 / -1; order: 3; }
+  .nm-remark { max-width: 140px; }
+  table th, table td { padding: 8px 6px; font-size: 12.5px; }
 }
 </style>

@@ -151,9 +151,9 @@ onMounted(load)
 </script>
 
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: center; }
-h1 { margin-top: 0; }
-.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border);
+.head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+h1 { margin: 0; }
+.seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; padding: 4px; margin-bottom: 14px; }
 .seg button { border: none; background: transparent; padding: 6px 14px; border-radius: 6px;
   cursor: pointer; color: var(--text-soft); }

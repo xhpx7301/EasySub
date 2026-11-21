@@ -1187,8 +1187,8 @@ h1 { margin-top: 0; }
 .sm-btn:disabled { opacity: .35; cursor: not-allowed; }
 
 /* 放大后的订阅卡片 */
-.sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-.sub-card { padding: 18px; cursor: grab; position: relative; overflow: hidden;
+.sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 16px; }
+.sub-card { padding: 18px; cursor: grab; position: relative; overflow: hidden; min-width: 0; max-width: 100%;
   transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .2s ease; }
 /* 悬停动感：上浮 + 轻微放大 + 渐变高光描边 + 顶部光带扫过 */
 .sub-card::after { content: ''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
@@ -1232,10 +1232,11 @@ h1 { margin-top: 0; }
 .sc-remark { background: var(--primary-soft); color: var(--primary); border-radius: 8px;
   padding: 6px 10px; font-size: 13px; margin-bottom: 8px; line-height: 1.4;
   word-break: break-word; }
-.sc-rows { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
-.sc-row { display: flex; justify-content: space-between; gap: 8px; }
+.sc-rows { display: flex; flex-direction: column; gap: 6px; font-size: 13px; min-width: 0; }
+.sc-row { display: flex; justify-content: space-between; gap: 8px; min-width: 0; }
 .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
-.sc-row > span:last-child { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-row > span:first-child { flex-shrink: 0; }
+.sc-row > span:last-child { min-width: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .due.soon { color: var(--warning); font-weight: 600; }
 .due.overdue { color: var(--danger); font-weight: 700; }
 .tag.one_time { background: #fef3c7; color: #b45309; }
@@ -1282,10 +1283,10 @@ h1 { margin-top: 0; }
 .browser .modal { width: 560px; }
 .lib-group { margin-bottom: 14px; }
 .lib-group-t { font-size: 13px; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
-.svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr)); gap: 8px; }
 .svc { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border);
   border-radius: 10px; background: var(--surface); cursor: pointer; font-size: 13px; color: var(--text);
-  text-align: left; transition: border-color .12s, background .12s; }
+  text-align: left; transition: border-color .12s, background .12s; min-width: 0; }
 .svc:hover { border-color: var(--primary); background: var(--primary-soft); }
 .svc-ico { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; flex-shrink: 0; }
 .svc span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1293,10 +1294,26 @@ h1 { margin-top: 0; }
 @media (max-width: 860px) {
   .bulk-bar { bottom: calc(74px + env(safe-area-inset-bottom)); padding: 10px; gap: 6px; }
   .bulk-sep { display: none; }
+  .bulk-cat { flex: 1 1 100%; max-width: none; }
+  .bulk-bar .btn { flex: 1 1 auto; }
 }
 @media (max-width: 720px) {
-  .sub-grid { grid-template-columns: 1fr; }
+  .head { flex-wrap: wrap; }
+  .bar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .seg { display: flex; width: 100%; }
+  .seg button { flex: 1; padding: 7px 6px; font-size: 13px; }
+  .search-box { max-width: none; width: 100%; }
+  .bar-acts { width: 100%; }
+  .bar-acts > * { flex: 1 1 auto; justify-content: center; text-align: center; }
+  .drag-hint { display: none; }
+  .sub-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .sub-card { padding: 15px; cursor: default; }
+  .sub-card:hover { transform: none; }
+  .sub-card:hover::after { display: none; }
   .sc-name { font-size: 16px; }
+  .sc-amount { font-size: 24px; margin: 10px 0 6px; }
+  .sc-acts { flex-wrap: wrap; }
+  .rules-head { flex-direction: column; align-items: stretch; }
   .reminder-rules { min-width: 100%; }
   .rule-row { grid-template-columns: 1fr 1fr 32px; }
   .rule-enabled { grid-column: 1 / -1; }

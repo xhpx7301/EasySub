@@ -38,13 +38,13 @@ onMounted(load)
 </script>
 
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: center; }
-h1 { margin-top: 0; }
-.cards { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-.log-card { border-left: 4px solid var(--success); }
+.head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+h1 { margin: 0; }
+.cards { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
+.log-card { border-left: 4px solid var(--success); min-width: 0; }
 .log-card.failed { border-left-color: var(--danger); }
-.lc-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; }
-.lc-body { font-size: 14px; white-space: pre-wrap; line-height: 1.5; }
+.lc-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; margin-bottom: 8px; }
+.lc-body { font-size: 14px; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
 .sm { font-size: 12px; margin-top: 8px; }
 .tag.ok { background: #dcfce7; color: #15803d; }
 .tag.bad { background: #fee2e2; color: #b91c1c; }

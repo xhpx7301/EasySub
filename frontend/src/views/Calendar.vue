@@ -16,7 +16,8 @@
       <div class="cal">
         <div class="dow" v-for="d in dows" :key="d">{{ d }}</div>
         <div v-for="(cell, i) in cells" :key="i" class="cell"
-             :class="{ out: !cell.inMonth, today: cell.isToday }">
+             :class="{ out: !cell.inMonth, today: cell.isToday, selected: selectedKey === cell.key, clickable: cell.events.length > 0 }"
+             @click="pickDay(cell)">
           <div class="dnum"><span class="num">{{ cell.day }}</span></div>
           <div class="evs">
             <div v-for="ev in cell.events.slice(0, 3)" :key="ev.id" class="ev"
@@ -33,6 +34,19 @@
         </div>
       </div>
     </div>
+
+    <div v-if="selectedCell" class="card day-detail">
+      <div class="dd-head">
+        <b>{{ selectedCell.key }}</b>
+        <button type="button" class="btn ghost sm" @click="selectedKey = ''">✕</button>
+      </div>
+      <div v-for="ev in selectedCell.events" :key="ev.id" class="dd-row">
+        <img v-if="isImg(ev.icon)" :src="ev.icon" class="dd-ico" />
+        <span v-else class="dd-emoji">{{ emojiOf(ev) }}</span>
+        <span class="dd-name">{{ ev.name }}</span>
+        <span class="dd-amt">{{ Number(ev.amount || 0).toFixed(2) }} {{ ev.currency }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -46,6 +60,7 @@ const now = new Date()
 const year = ref(now.getFullYear())
 const month = ref(now.getMonth())
 const subs = ref([])
+const selectedKey = ref('')
 
 const PALETTE = ['#5b5bd6', '#06b6d4', '#16a34a', '#f59e0b', '#ef4444', '#a855f7', '#0ea5e9', '#ec4899']
 function evColor(s) {
@@ -90,7 +105,9 @@ const cells = computed(() => {
       const dt = new Date(s.next_renewal_date)
       return dt.getFullYear() === d.getFullYear() && dt.getMonth() === d.getMonth() && dt.getDate() === d.getDate()
     })
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     arr.push({
+      key,
       day: d.getDate(),
       inMonth: d.getMonth() === month.value,
       isToday: today.getFullYear() === d.getFullYear() && today.getMonth() === d.getMonth() && today.getDate() === d.getDate(),
@@ -101,6 +118,14 @@ const cells = computed(() => {
   if (arr.slice(35).every((c) => !c.inMonth)) return arr.slice(0, 35)
   return arr
 })
+
+const selectedCell = computed(() =>
+  cells.value.find((c) => c.key === selectedKey.value && c.events.length > 0) || null
+)
+function pickDay(cell) {
+  if (!cell.events.length) { selectedKey.value = ''; return }
+  selectedKey.value = selectedKey.value === cell.key ? '' : cell.key
+}
 
 onMounted(async () => {
   const { data } = await api.get('/api/subscriptions', { params: { billing_type: 'recurring', active: true } })
@@ -122,31 +147,46 @@ onMounted(async () => {
 .today-btn:hover { border-color: var(--primary); color: var(--primary); }
 
 .cal-card { padding: 0; overflow: hidden; }
-.cal { display: grid; grid-template-columns: repeat(7, 1fr); }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .dow { text-align: right; font-size: 12px; font-weight: 600; color: var(--text-soft);
   padding: 12px 10px 8px; text-transform: uppercase; letter-spacing: .03em; }
-.cell { min-height: 104px; border-top: 1px solid var(--border); border-left: 1px solid var(--border);
-  padding: 4px 5px 6px; display: flex; flex-direction: column; }
+.cell { min-width: 0; min-height: 104px; border-top: 1px solid var(--border); border-left: 1px solid var(--border);
+  padding: 4px 5px 6px; display: flex; flex-direction: column; overflow: hidden; }
+.cell.clickable { cursor: pointer; }
+.cell.selected { background: var(--primary-soft); }
 .cell:nth-child(7n + 1) { border-left: none; }
 .dnum { text-align: right; }
 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px;
   border-radius: 50%; font-size: 13px; padding: 0 4px; }
 .cell.out .num { color: var(--text-soft); opacity: .45; }
 .cell.today .num { background: var(--danger); color: #fff; font-weight: 600; }
-.evs { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; overflow: hidden; }
+.evs { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; overflow: hidden; min-width: 0; }
 .ev { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text);
   background: color-mix(in srgb, var(--c) 14%, transparent); border-radius: 5px; padding: 2px 5px;
-  white-space: nowrap; overflow: hidden; }
+  white-space: nowrap; overflow: hidden; min-width: 0; }
 .ev-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c); flex-shrink: 0; }
 .ev-ico { width: 13px; height: 13px; border-radius: 3px; object-fit: contain; flex-shrink: 0; }
 .ev-emoji { font-size: 12px; flex-shrink: 0; line-height: 1; }
-.ev-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ev.more { background: transparent; color: var(--text-soft); padding: 0 5px; }
 
+.day-detail { margin-top: 12px; }
+.dd-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.dd-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 14px; }
+.dd-ico { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; flex-shrink: 0; }
+.dd-emoji { width: 22px; text-align: center; font-size: 16px; flex-shrink: 0; }
+.dd-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.dd-amt { font-weight: 600; white-space: nowrap; }
+
 @media (max-width: 720px) {
-  .cell { min-height: 72px; }
-  .ev { font-size: 10px; }
-  .ev :deep(*) { }
+  .head { flex-wrap: wrap; gap: 8px; }
+  .dow { padding: 8px 2px 6px; text-align: center; font-size: 11px; }
+  .cell { min-height: 64px; padding: 3px 2px 4px; }
+  .num { min-width: 20px; height: 20px; font-size: 12px; }
+  .ev { font-size: 10px; padding: 1px 3px; gap: 2px; }
+  .ev-dot { display: none; }
+  .ev-ico { width: 11px; height: 11px; }
   .month { font-size: 20px; }
+  .year { font-size: 17px; }
 }
 </style>

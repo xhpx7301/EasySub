@@ -417,13 +417,14 @@ onMounted(load)
 <style scoped>
 .notify h3 { margin: 0; }
 .nc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.nc-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .nc-head .btn { width: auto; }
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; padding: 6px; background: var(--surface-2); border-radius: 12px; }
-.tab { border: none; background: transparent; padding: 7px 13px; border-radius: 9px; cursor: pointer; font-size: 13px;
-  color: var(--text-soft); display: inline-flex; align-items: center; gap: 6px; }
+.tab { border: none; background: transparent; padding: 7px 12px; border-radius: 9px; cursor: pointer; font-size: 13px;
+  color: var(--text-soft); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .tab.on { background: var(--surface); color: var(--primary); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 .on-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
-.ch-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.ch-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .ch-head h4 { margin: 0; font-size: 16px; }
 .ch-actions { display: flex; align-items: center; gap: 12px; }
 .fields { display: flex; flex-direction: column; gap: 13px; }
@@ -435,8 +436,8 @@ onMounted(load)
 .f-h { display: flex; justify-content: space-between; align-items: center; }
 .f small { font-size: 12px; }
 .empty { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; text-align: center; color: var(--text-soft); font-size: 13px; margin: 0; }
-.list-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-.list-row input { flex: 1; }
+.list-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; min-width: 0; }
+.list-row input { flex: 1; min-width: 0; }
 .x { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; width: 34px; height: 34px; cursor: pointer; color: var(--danger); flex-shrink: 0; }
 .btn.sm { width: auto; padding: 7px 12px; font-size: 13px; }
 .btn.xs { width: auto; padding: 4px 10px; font-size: 12px; }
