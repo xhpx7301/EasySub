@@ -176,18 +176,18 @@
         <p style="font-size:14px;line-height:1.6">
           {{ renewBulk ? t('sub.bulkRenewMsg', { n: selectedRecurring.length }) : t('sub.renewMsg', { name: renewTarget.name }) }}
         </p>
-        <label class="opt" :class="{ on: renewMode === 'today' }">
-          <input type="radio" value="today" v-model="renewMode" />
-          <div>
-            <div>{{ t('sub.renewToday') }}</div>
-            <div v-if="!renewBulk" class="muted opt-d">→ {{ previewToday }}</div>
-          </div>
-        </label>
         <label class="opt" :class="{ on: renewMode === 'due' }">
           <input type="radio" value="due" v-model="renewMode" />
           <div>
             <div>{{ t('sub.renewDue') }}</div>
             <div v-if="!renewBulk" class="muted opt-d">→ {{ previewDue }}</div>
+          </div>
+        </label>
+        <label class="opt" :class="{ on: renewMode === 'today' }">
+          <input type="radio" value="today" v-model="renewMode" />
+          <div>
+            <div>{{ t('sub.renewToday') }}</div>
+            <div v-if="!renewBulk" class="muted opt-d">→ {{ previewToday }}</div>
           </div>
         </label>
         <div class="row" style="justify-content:flex-end;margin-top:16px">
@@ -527,7 +527,7 @@ const browserQ = ref('')
 
 const renewTarget = ref(null)
 const renewBulk = ref(false)
-const renewMode = ref('today')
+const renewMode = ref('due')
 const renewing = ref(false)
 
 const delTarget = ref(null)
@@ -870,7 +870,7 @@ function askBulkRenew() {
   if (!selectedRecurring.value.length) return
   renewTarget.value = null
   renewBulk.value = true
-  renewMode.value = 'today'
+  renewMode.value = 'due'
 }
 function bulkSetActive(active) {
   runBulk([...selected], (id) => api.put(`/api/subscriptions/${id}`, { is_active: active }))
@@ -1068,7 +1068,7 @@ async function save() {
 }
 
 /* ---------- 续费（支持单个与批量） ---------- */
-function askRenew(s) { renewBulk.value = false; renewTarget.value = s; renewMode.value = 'today' }
+function askRenew(s) { renewBulk.value = false; renewTarget.value = s; renewMode.value = 'due' }
 function closeRenew() { renewTarget.value = null; renewBulk.value = false }
 const previewToday = computed(() =>
   renewTarget.value ? toISO(addCycle(new Date(), renewTarget.value.cycle, renewTarget.value.cycle_count)) : ''
